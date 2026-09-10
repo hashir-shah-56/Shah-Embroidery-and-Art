@@ -1,0 +1,230 @@
+﻿/* ========================================================================== 
+   Shared Skeleton Loading States
+   ========================================================================== */
+.skeleton-shimmer,
+.skeleton-text-line,
+.skeleton-image,
+.skeleton-card,
+.skeleton-circle,
+.skeleton-row,
+.skeleton-summary {
+  background: linear-gradient(100deg, var(--bg-secondary) 20%, rgba(247, 241, 229, 0.9) 45%, var(--bg-secondary) 70%);
+  background-size: 240% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 140% 0; }
+  100% { background-position: -40% 0; }
+}
+
+.skeleton-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.skeleton-overlay-host {
+  position: relative;
+}
+
+.skeleton-overlay-host > :not(.skeleton-layer) {
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.skeleton-layer,
+.skeleton-fade-target {
+  opacity: 1;
+  transition: opacity 260ms ease;
+}
+
+.skeleton-layer.is-leaving {
+  opacity: 0;
+}
+
+.skeleton-image {
+  color: transparent;
+  opacity: 0.92;
+  transition: opacity 260ms ease, background 260ms ease;
+}
+
+.skeleton-image.is-loaded {
+  background: none;
+  animation: none;
+  color: inherit;
+  opacity: 1;
+}
+
+.skeleton-text-line {
+  display: block;
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text-line.short { width: 34%; }
+.skeleton-text-line.medium { width: 62%; }
+.skeleton-text-line.long { width: 86%; }
+
+.skeleton-card {
+  min-height: 280px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  padding: 0;
+  overflow: hidden;
+  max-width: 320px;
+  width: 100%;
+}
+
+.skeleton-card-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.skeleton-card-content {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.skeleton-circle {
+  width: 76px;
+  height: 76px;
+  border-radius: var(--radius-full);
+}
+
+.skeleton-category-card {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 12px;
+  min-height: 180px;
+}
+
+.skeleton-gallery-item {
+  min-height: 260px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.skeleton-gallery-item.tall {
+  min-height: 390px;
+}
+
+.skeleton-testimonial-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 230px;
+  padding: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.skeleton-testimonial-card .skeleton-circle {
+  width: 42px;
+  height: 42px;
+}
+
+.skeleton-testimonial-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 92px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.skeleton-row-thumb {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-row-copy {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+}
+
+.skeleton-summary {
+  min-height: 220px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+}
+
+.skeleton-summary-lines {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.skeleton-profile-list {
+  display: grid;
+  gap: 18px;
+}
+
+.skeleton-profile-card {
+  min-height: 150px;
+  padding: 22px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.skeleton-profile-wishlist,
+.skeleton-profile-order-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.skeleton-profile-order {
+  display: grid;
+  gap: 16px;
+}
+
+.skeleton-banner-card {
+  min-height: 380px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent-gold);
+}
+
+.skeleton-form-choice {
+  height: 58px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .skeleton-text-line,
+  .skeleton-image,
+  .skeleton-card,
+  .skeleton-circle,
+  .skeleton-row,
+  .skeleton-summary {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .skeleton-gallery-item.tall { min-height: 300px; }
+  .skeleton-card { min-height: 240px; }
+}
+
+@media (max-width: 480px) {
+  .skeleton-row { gap: 10px; padding: 10px; }
+  .skeleton-row-thumb { width: 52px; height: 52px; flex-basis: 52px; }
+  .skeleton-testimonial-card { min-height: 200px; padding: 18px; }
+  .skeleton-banner-card { min-height: 320px; }
+}

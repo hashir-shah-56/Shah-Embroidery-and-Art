@@ -1,0 +1,346 @@
+/* ==========================================================================
+   Responsive Media Queries & Fluid Auto-Fit Grid Overrides
+   MUST be loaded last so all overrides correctly cascade over base styles.
+   ========================================================================== */
+
+/* Fluid Auto-Fit Grid Overrides (override fixed column counts in components) */
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: clamp(12px, 2vw, 20px);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(12px, 2vw, 20px);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.banners-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: clamp(24px, 3vw, 40px);
+}
+
+/* Modal Viewport Containment & Scroll Protection */
+.modal-container,
+.cart-modal-container,
+.checkout-modal-container,
+.confirmation-modal-container {
+  max-height: 88vh;
+  max-width: min(92vw, 1080px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: clamp(20px, 4vw, 36px);
+  margin: auto;
+}
+
+.modal-close {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+  touch-action: manipulation;
+}
+
+/* Touch Target Compliance (Fitts's Law Site-Wide) */
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-outline,
+.btn-outline-gold {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.tab-btn {
+  min-height: 44px;
+  padding: 10px 20px;
+  touch-action: manipulation;
+}
+
+.cart-btn,
+.icon-btn,
+#searchBtn,
+.hamburger {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+/* --------------------------------------------------------------------------
+   Cart & Checkout responsive overrides
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .cart-layout-grid,
+  .checkout-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Large Tablet / Small Desktop (≤1024px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .hero-card {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: auto;
+  }
+
+  .hero-image-wrapper {
+    min-height: 320px;
+    height: 380px;
+  }
+
+  .story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-search-wrapper.is-active .nav-search-expand {
+    width: min(280px, calc(100vw - 160px));
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1020;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tablet Portrait (≤900px) — nav collapses to hamburger + mobile drawer
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .nav-menu {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .banner-content {
+    width: 100%;
+  }
+
+  .banner-image-wrapper {
+    display: none;
+  }
+
+  .gallery-item.tall {
+    grid-row: auto;
+    height: 280px;
+  }
+
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .trust-strip-wrapper {
+    flex-direction: column;
+    border-radius: var(--radius-lg);
+    align-items: flex-start;
+  }
+
+  .mobile-drawer {
+    width: min(320px, 85vw);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Large Mobile (≤600px) — Cart item 2-row reflow
+   -------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .cart-item-row {
+    display: grid;
+    grid-template-columns: 54px 1fr 44px;
+    grid-template-areas:
+      "thumb details remove"
+      "stepper stepper subtotal";
+    gap: 10px 12px;
+    padding: 12px;
+  }
+
+  .cart-item-thumb {
+    grid-area: thumb;
+    width: 54px;
+    height: 54px;
+  }
+
+  .cart-item-details {
+    grid-area: details;
+  }
+
+  .cart-item-remove {
+    grid-area: remove;
+    justify-self: end;
+    width: 44px;
+    height: 44px;
+  }
+
+  .quantity-stepper {
+    grid-area: stepper;
+    justify-self: start;
+  }
+
+  .stepper-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .stepper-val {
+    width: 36px;
+  }
+
+  .cart-item-subtotal {
+    grid-area: subtotal;
+    align-self: center;
+    justify-self: end;
+  }
+
+  .form-row,
+  .form-row.three-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Standard Mobile (≤480px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .hero-content {
+    padding: clamp(24px, 4vw, 36px);
+  }
+
+  .hero-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-cta .btn {
+    width: 100%;
+  }
+
+  .cart-modal-container,
+  .checkout-modal-container,
+  .confirmation-modal-container {
+    padding: 20px 16px;
+  }
+
+  .payment-card {
+    min-height: 48px;
+    padding: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile Search Takeover (<768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .navbar.mobile-search-active {
+    background-color: rgba(250, 246, 240, 0.92);
+  }
+
+  .navbar.mobile-search-active .navbar-container,
+  .navbar.mobile-search-active .nav-actions {
+    position: static;
+  }
+
+  .navbar.mobile-search-active .logo,
+  .navbar.mobile-search-active .nav-menu,
+  .navbar.mobile-search-active .nav-actions > :not(.nav-search-wrapper) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: opacity var(--transition-normal), visibility var(--transition-normal), transform var(--transition-normal);
+  }
+
+  .navbar.mobile-search-active .nav-search-wrapper {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 0 max(16px, 4vw);
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity var(--transition-normal), transform var(--transition-normal);
+  }
+
+  .navbar.mobile-search-active #searchBtn {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .navbar.mobile-search-active .nav-search-expand,
+  .navbar.mobile-search-active .nav-search-wrapper.is-active .nav-search-expand {
+    position: relative;
+    top: auto;
+    right: auto;
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .navbar.mobile-search-active .nav-search-input-box {
+    width: 100%;
+  }
+
+  .navbar.mobile-search-active .search-suggestions-dropdown {
+    position: fixed;
+    top: 80px;
+    right: auto;
+    left: 0;
+    width: 100vw;
+    min-width: 0;
+    max-height: calc(100vh - 80px);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Touch Device Overrides (Fitts's Law)
+   Hover-dependent elements must be visible on touch screens.
+   -------------------------------------------------------------------------- */
+@media (hover: none) {
+  .artwork-quick-view-btn {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .artwork-detail-btn {
+    opacity: 1;
+    transform: none;
+  }
+
+  .gallery-overlay {
+    opacity: 1;
+  }
+}

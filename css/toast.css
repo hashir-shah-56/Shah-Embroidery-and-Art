@@ -1,0 +1,69 @@
+/* ==========================================================================
+   Unified Toast / Message Component
+   Single site-wide transient message used for BOTH success and error
+   feedback (consolidated from earlier per-feature variants). Mounted once
+   per page via #siteToast (auto-created by js/script.js if absent).
+   ========================================================================== */
+
+.site-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 2200;
+  max-width: min(92vw, 420px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--accent-gold);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 12px);
+  transition: var(--transition-normal);
+  pointer-events: none;
+}
+
+.site-toast.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+/* Error variant — red accent to distinguish failures from successes */
+.site-toast.site-toast-error {
+  border-left-color: #C0392B;
+}
+
+.site-toast .toast-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--accent-gold);
+}
+
+.site-toast.site-toast-error .toast-icon {
+  color: #C0392B;
+}
+
+/* Cart badge pulse — the "added to cart" visual cue */
+@keyframes badgeBounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+.cart-count.bounce {
+  animation: badgeBounce 0.3s ease;
+}

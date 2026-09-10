@@ -1,0 +1,45 @@
+/* ==========================================================================
+   Trust / Brand Strip Styles
+   ========================================================================== */
+.trust-strip-wrapper {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-full);
+  padding: 30px 40px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.trust-strip-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.trust-strip-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--accent-gold-light);
+  color: var(--accent-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-strip-text h6 {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.trust-strip-text span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

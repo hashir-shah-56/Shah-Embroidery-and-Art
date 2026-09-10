@@ -1,0 +1,24 @@
+/* Shared cards, filters, navigation and footer come from style.css. */
+.shop-main { padding-top: clamp(120px, 12vw, 160px); }
+.shop-main #shopFilters { margin-bottom: 24px; }
+.shop-status { color: var(--text-muted); font-size: .9rem; margin-bottom: 24px; min-height: 24px; }
+#shopResults { scroll-margin-top: 110px; }
+.shop-empty { grid-column: 1 / -1; text-align: center; padding: 60px 24px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); }
+.shop-empty h2 { font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 12px; }
+.shop-empty p { color: var(--text-secondary); margin-bottom: 24px; }
+.shop-pagination { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin-top: 40px; }
+.shop-page-numbers { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.shop-page-btn { min-width: 44px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-full); color: var(--text-secondary); background: var(--bg-card); font-weight: 600; transition: var(--transition-fast); }
+.shop-page-btn:hover, .shop-page-btn[aria-current="page"] { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--text-light); }
+.shop-pagination button:disabled { opacity: .5; cursor: not-allowed; }
+.shop-pagination .btn { min-height: 44px; padding: 10px 20px; }
+.shop-gap { color: var(--text-muted); padding: 0 2px; }
+.shop-main button:focus-visible, #shopResults:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 4px; }
+@media (max-width: 768px) {
+  .shop-main #shopFilters { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 4px 2px 16px; }
+  .shop-main #shopFilters .tab-btn { flex: 0 0 auto; white-space: nowrap; }
+}
+@media (max-width: 480px) {
+  .shop-pagination { gap: 12px; }
+  .shop-page-numbers { order: -1; flex-basis: 100%; gap: 6px; }
+}
