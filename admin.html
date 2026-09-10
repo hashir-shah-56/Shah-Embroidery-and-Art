@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin Dashboard | Shah Embroidery &amp; Art</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <p id="authStatus" class="admin-auth-status" role="status">Checking your session…</p>
+  <noscript>JavaScript is required. The dashboard remains locked.</noscript>
+  <div id="adminDashboard" class="admin-shell" hidden>
+    <header class="admin-header"><div><p class="admin-eyebrow">Shah Embroidery &amp; Art</p><h1>Admin Dashboard</h1></div><button id="adminLogout" class="btn btn-outline" type="button">Log Out</button></header>
+    <p id="dashboardError" class="form-error-text" role="alert"></p>
+    <main>
+      <section class="admin-panel" aria-labelledby="productFormHeading">
+        <h2 id="productFormHeading">Add New Product</h2>
+        <form id="productForm">
+          <fieldset id="productFields">
+            <div class="admin-form-grid">
+              <div class="form-group"><label class="form-label" for="title">Title *</label><input id="title" class="form-input" required maxlength="200"></div>
+              <div class="form-group" id="categoryGroup"><label class="form-label" for="category">Category *</label><select id="category" class="form-select"></select><div id="newCategoryGroup" style="display:none;margin-top:10px;"><label class="form-label" for="newCategoryInput" style="font-size:0.85rem;margin-bottom:4px;">New Category Name *</label><div style="display:flex;gap:8px;align-items:center;"><input id="newCategoryInput" class="form-input" placeholder="New Category Name" maxlength="100" autocomplete="off"><button type="button" id="cancelNewCategory" class="btn btn-outline" style="white-space:nowrap;padding:8px 14px;">Cancel</button></div><p id="newCategoryError" class="form-error-text" role="alert"></p></div></div>
+              <div class="form-group" id="priceGroup"><label class="form-label" for="price">Price ($) *</label><input id="price" class="form-input" type="number" min="0" step="0.01" required></div>
+              <div class="form-group" id="hintGroup" hidden><label class="form-label" for="custom_price_hint">Custom Price Hint</label><input id="custom_price_hint" class="form-input" placeholder="Starts from $150" maxlength="200" disabled></div>
+              <div class="admin-checks"><label><input id="is_custom_quote" type="checkbox"> Custom Quote</label><label><input id="is_featured" type="checkbox"> Is Featured</label><label><input id="in_stock" type="checkbox" checked> In Stock</label></div>
+              <div class="form-group admin-wide"><label class="form-label" for="description">Description</label><textarea id="description" class="form-textarea" maxlength="5000"></textarea></div>
+              <div class="form-group admin-wide"><label class="form-label" for="productImage">Product Image *</label><input id="productImage" class="form-input" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="imageHelp imageError" required><p id="imageHelp" class="admin-muted">JPG, PNG or WebP, up to 5 MB. When editing, leave empty to keep the current image.</p><p id="imageError" class="form-error-text" role="alert"></p><img id="imagePreview" class="admin-preview" alt="Product image preview" hidden></div>
+              <div class="form-group"><label class="form-label" for="badge_label">Badge Label</label><input id="badge_label" class="form-input" placeholder="Bestseller" maxlength="80"></div>
+              <div class="form-group"><label class="form-label" for="badge_style">Badge Style</label><select id="badge_style" class="form-select"><option value="badge-gold">Gold</option><option value="badge-dark">Dark</option></select></div>
+            </div>
+            <p id="productError" class="form-error-text" role="alert"></p>
+            <div class="admin-actions"><button id="productSubmit" class="btn btn-primary" type="submit">Add Product</button><button id="cancelEdit" class="btn btn-outline" type="button" hidden>Cancel Edit</button></div>
+          </fieldset>
+        </form>
+      </section>
+      <section class="admin-panel" aria-labelledby="productsHeading">
+        <div class="admin-section-header"><h2 id="productsHeading">All Products</h2><button id="refreshProducts" class="btn btn-outline" type="button">Refresh</button></div>
+        <p id="tableError" class="form-error-text" role="alert"></p>
+        <div class="admin-table-wrap" tabindex="0" role="region" aria-label="Products table"><table><thead><tr><th scope="col">Image</th><th scope="col">Title</th><th scope="col">Category</th><th scope="col">Price</th><th scope="col">Featured</th><th scope="col">In Stock</th><th scope="col">Actions</th></tr></thead><tbody id="productsBody"></tbody></table></div>
+        <div class="admin-pagination"><button id="previousPage" class="btn btn-outline" type="button" disabled>Previous</button><span id="pageStatus" role="status"></span><button id="nextPage" class="btn btn-outline" type="button" disabled>Next</button></div>
+      </section>
+    </main>
+  </div>
+  <div id="deleteModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteHeading" aria-describedby="deleteMessage" hidden>
+    <div class="modal-container"><h2 id="deleteHeading">Delete Product?</h2><p id="deleteMessage"></p><p id="deleteError" class="form-error-text" role="alert"></p><div class="admin-actions"><button id="cancelDelete" class="btn btn-outline" type="button">Go Back</button><button id="confirmDelete" class="btn btn-danger" type="button">Delete Product</button></div></div>
+  </div>
+  <div id="adminToast" class="site-toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/product-loader.js"></script>
+  <script src="js/admin-config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
