@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Shah Embroidery & Art by Syeda Tauseefa Abrar - Premium handmade embroidery, textile art, custom embroidery, and artistic handcrafted creations with 16 years of experience.">
-  <meta name="keywords" content="handmade embroidery, hoop art, fabric wall art, custom portrait embroidery, Syeda Tauseefa Abrar, Shah Embroidery">
-  <title>Shah Embroidery & Art | Handcrafted Textile Art & Custom Creations</title>
-  
+  <meta name="description"
+    content="Discover handmade embroidery and textile art by Syeda Tauseefa Abrar — 16 years of craftsmanship in hoop art, wall art, bridal keepsakes, Islamic calligraphy, and bespoke custom orders.">
+  <title>Shah Embroidery &amp; Art | Handmade Embroidery &amp; Custom Textile Art</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="Images/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="Images/favicon/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="Images/favicon/apple-touch-icon.png">
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/skeleton.css">
+
 </head>
+
 <body>
 
   <!-- ==========================================================================
        1. ANNOUNCEMENT BAR
-       ========================================================================== -->
-  <div class="announcement-bar" id="announcementBar">
+       <div class="announcement-bar" id="announcementBar">
     <div class="container">
       <p>
         <span>Handcrafted with Passion</span>
@@ -26,6 +37,7 @@
       </p>
     </div>
   </div>
+  ========================================================================== -->
 
   <!-- ==========================================================================
        2. NAVBAR
@@ -34,41 +46,69 @@
     <div class="container navbar-container">
       <!-- Logo -->
       <a href="#home" class="logo" id="mainLogo">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-        </svg>
-        <span>Shah Embroidery & Art</span>
+        <img src="Images/logo.png" alt="Logo" width="40" height="45" style="width: 40px; height: 45px;">
       </a>
 
       <!-- Center Navigation -->
       <nav class="nav-menu" id="navMenu">
         <a href="#home" class="nav-link active">Home</a>
-        <a href="#about" class="nav-link">About</a>
-        <a href="#gallery" class="nav-link">Gallery</a>
         <a href="#collections" class="nav-link">Collections</a>
+        <a href="#about" class="nav-link">About</a>
         <a href="#custom-orders" class="nav-link">Custom Orders</a>
+        <a href="#gallery" class="nav-link">Gallery</a>
+        <a href="#testimonials" class="nav-link">Testimonials</a>
         <a href="#contact" class="nav-link">Contact</a>
       </nav>
 
       <!-- Right Action Controls -->
       <div class="nav-actions">
-        <!-- Search Button -->
-        <button class="icon-btn" id="searchBtn" aria-label="Search Artwork">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </button>
+        <!-- Inline Expanding Search Container -->
+        <div class="nav-search-wrapper" id="navSearchWrapper">
+          <button class="icon-btn" id="searchBtn" aria-label="Search Artwork" aria-expanded="false"
+            aria-controls="searchSuggestions">
+            <svg class="search-open-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <svg class="search-close-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" style="display: none;">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <div class="nav-search-expand" id="searchExpandContainer">
+            <div class="nav-search-input-box">
+              <svg class="search-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="searchInput" class="nav-search-input" placeholder="Search here.."
+                autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="searchSuggestions"
+                role="combobox">
+              <button type="button" class="nav-search-clear" id="searchClearBtn" aria-label="Clear search text"
+                style="display: none;">&times;</button>
+            </div>
+
+            <!-- Live Suggestions Dropdown -->
+            <div class="search-suggestions-dropdown" id="searchSuggestions" role="listbox"
+              aria-label="Search suggestions"></div>
+          </div>
+        </div>
 
         <!-- Cart/Bag Icon -->
-        <button class="icon-btn trigger-custom-modal" aria-label="Order Inquiry">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
-          <span class="cart-count">0</span>
-        </button>
+        <a class="cart-btn" id="navCartBtn" href="cart.html" aria-label="View Shopping Cart">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span class="cart-count" id="cartCountBadge">0</span>
+        </a>
+
+        <!-- My Account Icon -->
+        <a class="icon-btn" id="navAccountBtn" href="profile.html" aria-label="My Account">
+          <i class="fa-solid fa-user"></i>
+          <span class="nav-user-badge" id="navUserBadge" style="display: none;">A</span>
+        </a>
 
         <!-- Mobile Hamburger Toggle -->
         <div class="hamburger" id="hamburgerToggle" aria-label="Toggle Navigation">
@@ -85,10 +125,10 @@
     <div class="modal-close" id="drawerClose">&times;</div>
     <div class="mobile-nav-links">
       <a href="#home" class="mobile-nav-link">Home</a>
-      <a href="#about" class="mobile-nav-link">About</a>
-      <a href="#gallery" class="mobile-nav-link">Gallery</a>
       <a href="#collections" class="mobile-nav-link">Collections</a>
+      <a href="#about" class="mobile-nav-link">About</a>
       <a href="#custom-orders" class="mobile-nav-link">Custom Orders</a>
+      <a href="#gallery" class="mobile-nav-link">Gallery</a>
       <a href="#contact" class="mobile-nav-link">Contact</a>
     </div>
   </aside>
@@ -102,51 +142,60 @@
         <div class="hero-card">
           <!-- Hero Text Content -->
           <div class="hero-content">
-            <div class="hero-label">
+            <!--<div class="hero-label">
               <span class="hero-label-dot"></span>
               HANDCRAFTED WITH PASSION
-            </div>
-            
-            <h1 class="hero-title">Timeless Art, Stitched by Hand</h1>
-            
+            </div> -->
+
+            <h1 class="hero-title">Shah Embroidery & Art</h1>
+
             <p class="hero-description">
-              Discover beautifully handcrafted embroidery and artistic creations, made with passion, precision, and years of experience.
+              Discover beautifully handcrafted embroidery and artistic creations, made with passion, precision, and
+              years of experience.
             </p>
 
             <div class="hero-cta">
-              <a href="#featured" class="btn btn-primary">Explore Our Work</a>
-              <button class="btn btn-outline trigger-custom-modal">Custom Order</button>
+              <a href="#collections" class="btn btn-primary">Explore Our Work</a>
+              <a href="#contact" class="btn btn-outline" id="exploreFullGalleryBtn">Contact Us</a>
             </div>
 
             <!-- Floating Trust Badges -->
             <div class="hero-trust-bar">
+              <!--
               <div class="hero-trust-item">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
                 <span>16 Years Craftsmanship</span>
-              </div>
+              </div> 
               <div class="hero-trust-item">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>
                 <span>100% Handmade</span>
               </div>
+              -->
             </div>
           </div>
 
           <!-- Hero Image & Floating Badge -->
           <div class="hero-image-wrapper">
-            <img src="Images/hero_embroidery.jpg" alt="Handcrafted Floral Embroidery Art" class="hero-image" onerror="this.src='https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=1200&auto=format&fit=crop'">
-            
+            <img src="Images/hero_embroidery.jpg" alt="Handcrafted Floral Embroidery Art" class="hero-image"
+              width="1200" height="1800"
+              onerror="this.src='https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=1200&auto=format&fit=crop'">
+
             <div class="hero-floating-badge">
               <div class="badge-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                  </path>
                 </svg>
               </div>
               <div class="badge-text">
-                <span>By Syeda Tauseefa Abrar</span>
+                <span>By Syeda Toseefa Abrar Shah</span>
                 <strong>Artisanal Excellence</strong>
               </div>
             </div>
@@ -156,120 +205,16 @@
     </section>
 
     <!-- ==========================================================================
-         4. ARTWORK CATEGORIES (CIRCULAR CARDS)
+         5. FEATURED ARTWORK SECTION — dynamically populated by product-loader.js
          ========================================================================== -->
-    <section class="section-padding" id="categories">
-      <div class="container">
-        <div class="text-center">
-          <span class="section-subtitle">CURATED CATEGORIES</span>
-          <h2 class="section-title">Explore Our Art Forms</h2>
-          <p class="section-description">Discover intricate hand embroidery, decorative hoop art, custom monogram pieces, and traditional fabric creations.</p>
-        </div>
-
-        <div class="categories-grid">
-          <!-- Category 1 -->
-          <a href="#gallery" class="category-card">
-            <div class="category-thumb-wrapper">
-              <img src="Images/cat_hand_embroidery.jpg" alt="Hand Embroidery" class="category-thumb" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600&auto=format&fit=crop'">
-            </div>
-            <h3 class="category-name">Hand Embroidery</h3>
-            <span class="category-count">120+ Items</span>
-          </a>
-
-          <!-- Category 2 -->
-          <a href="#gallery" class="category-card">
-            <div class="category-thumb-wrapper">
-              <img src="Images/cat_hoop_art.jpg" alt="Hoop Art" class="category-thumb" onerror="this.src='https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=600&auto=format&fit=crop'">
-            </div>
-            <h3 class="category-name">Hoop Art</h3>
-            <span class="category-count">85+ Items</span>
-          </a>
-
-          <!-- Category 3 -->
-          <a href="#gallery" class="category-card">
-            <div class="category-thumb-wrapper">
-              <img src="Images/cat_wall_art.jpg" alt="Wall Art" class="category-thumb" onerror="this.src='https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=600&auto=format&fit=crop'">
-            </div>
-            <h3 class="category-name">Wall Art</h3>
-            <span class="category-count">60+ Items</span>
-          </a>
-
-          <!-- Category 4 -->
-          <a href="#custom-orders" class="category-card">
-            <div class="category-thumb-wrapper">
-              <img src="Images/cat_custom_designs.jpg" alt="Custom Designs" class="category-thumb" onerror="this.src='https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop'">
-            </div>
-            <h3 class="category-name">Custom Designs</h3>
-            <span class="category-count">Made to Order</span>
-          </a>
-
-          <!-- Category 5 -->
-          <a href="#gallery" class="category-card">
-            <div class="category-thumb-wrapper">
-              <img src="Images/cat_bridal_wedding.jpg" alt="Bridal & Wedding" class="category-thumb" onerror="this.src='https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=600&auto=format&fit=crop'">
-            </div>
-            <h3 class="category-name">Bridal & Wedding</h3>
-            <span class="category-count">Exclusive</span>
-          </a>
-
-          <!-- Category 6 -->
-          <a href="#gallery" class="category-card">
-            <div class="category-thumb-wrapper">
-              <img src="Images/cat_islamic_art.jpg" alt="Islamic Art" class="category-thumb" onerror="this.src='https://images.unsplash.com/photo-1564769625905-50e93615e769?q=80&w=600&auto=format&fit=crop'">
-            </div>
-            <h3 class="category-name">Islamic Art</h3>
-            <span class="category-count">Special Edition</span>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==========================================================================
-         5. FEATURED COLLECTION BANNERS (SIDE-BY-SIDE CARDS)
-         ========================================================================== -->
-    <section class="section-padding" id="collections" style="padding-top: 0;">
-      <div class="container">
-        <div class="banners-grid">
-          <!-- Card 1 -->
-          <div class="banner-card">
-            <div class="banner-content">
-              <span class="banner-label">CUSTOM CREATIONS</span>
-              <h3 class="banner-title">Your Vision, Stitched into Art</h3>
-              <p class="banner-text">Request personalized embroidery portraits, custom wedding keepsakes, and bespoke home decor artwork crafted to your exact specifications.</p>
-              <button class="btn btn-primary trigger-custom-modal">Start a Custom Order</button>
-            </div>
-            <div class="banner-image-wrapper">
-              <img src="Images/banner_custom.jpg" alt="Custom Embroidery Process" class="banner-image" onerror="this.src='https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=800&auto=format&fit=crop'">
-            </div>
-          </div>
-
-          <!-- Card 2 -->
-          <div class="banner-card">
-            <div class="banner-content">
-              <span class="banner-label">LATEST WORK</span>
-              <h3 class="banner-title">Discover Our Newest Creations</h3>
-              <p class="banner-text">Explore our recently completed handcrafted threadwork pieces featuring vibrant botanical motifs, intricate gold zardozi, and contemporary designs.</p>
-              <a href="#gallery" class="btn btn-secondary">View Gallery</a>
-            </div>
-            <div class="banner-image-wrapper">
-              <img src="Images/banner_latest.jpg" alt="Latest Embroidery Artworks" class="banner-image" onerror="this.src='https://images.unsplash.com/photo-1606744888344-493238951221?q=80&w=800&auto=format&fit=crop'">
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==========================================================================
-         6. FEATURED ARTWORK SECTION
-         ========================================================================== -->
-    <section class="section-padding" id="featured" style="background-color: var(--bg-surface);">
+    <section class="section-padding" id="collections" style="background-color: var(--bg-surface);">
       <div class="container">
         <div class="artwork-header">
           <div>
             <span class="section-subtitle">HANDCRAFTED SELECTION</span>
-            <h2 class="section-title" style="margin-bottom: 0;">Featured Creations</h2>
+            <h2 class="section-title" style="margin-bottom: 0;">Latest Work</h2>
           </div>
-          <a href="#gallery" class="view-all-link">
+          <a href="shop.html" class="view-all-link" id="viewAllArtworkLink">
             View All Artwork
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -278,199 +223,42 @@
           </a>
         </div>
 
-        <div class="artwork-grid">
-          <!-- Item 1 -->
-          <div class="artwork-card" data-title="Floral Threadwork" data-category="Hoop Art" data-price="$140.00">
-            <div class="artwork-img-box">
-              <span class="badge badge-gold artwork-badge">Bestseller</span>
-              <img src="Images/art_floral_threadwork.jpg" alt="Floral Threadwork Hoop Art" class="artwork-img" onerror="this.src='https://images.unsplash.com/photo-1518895949257-7621c3c786d7?q=80&w=600&auto=format&fit=crop'">
-              <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
-            </div>
-            <div class="artwork-details">
-              <span class="artwork-category">Hoop Art</span>
-              <h3 class="artwork-title">Floral Threadwork</h3>
-              <div class="artwork-footer">
-                <div class="artwork-price">$140.00</div>
-                <button class="artwork-detail-btn trigger-quick-view" aria-label="View Artwork Details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+        <!-- Skeleton placeholders shown while Supabase loads -->
+        <div class="artwork-grid" id="featuredGrid">
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-shimmer skeleton-card-image"></div>
+            <div class="skeleton-card-content"><span class="skeleton-text-line short"></span><span
+                class="skeleton-text-line long"></span><span class="skeleton-text-line medium"></span></div>
           </div>
-
-          <!-- Item 2 -->
-          <div class="artwork-card" data-title="Golden Bloom" data-category="Bridal & Wedding" data-price="$280.00">
-            <div class="artwork-img-box">
-              <span class="badge badge-dark artwork-badge">New</span>
-              <img src="Images/art_golden_bloom.jpg" alt="Golden Bloom Metallic Embroidery" class="artwork-img" onerror="this.src='https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=600&auto=format&fit=crop'">
-              <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
-            </div>
-            <div class="artwork-details">
-              <span class="artwork-category">Bridal & Wedding</span>
-              <h3 class="artwork-title">Golden Bloom</h3>
-              <div class="artwork-footer">
-                <div class="artwork-price">$280.00</div>
-                <button class="artwork-detail-btn trigger-quick-view" aria-label="View Artwork Details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-shimmer skeleton-card-image"></div>
+            <div class="skeleton-card-content"><span class="skeleton-text-line short"></span><span
+                class="skeleton-text-line long"></span><span class="skeleton-text-line medium"></span></div>
           </div>
-
-          <!-- Item 3 -->
-          <div class="artwork-card" data-title="Traditional Elegance" data-category="Hand Embroidery" data-price="$195.00">
-            <div class="artwork-img-box">
-              <img src="Images/art_traditional_elegance.jpg" alt="Traditional Elegance Thread Piece" class="artwork-img" onerror="this.src='https://images.unsplash.com/photo-1582562124811-c09040d0a901?q=80&w=600&auto=format&fit=crop'">
-              <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
-            </div>
-            <div class="artwork-details">
-              <span class="artwork-category">Hand Embroidery</span>
-              <h3 class="artwork-title">Traditional Elegance</h3>
-              <div class="artwork-footer">
-                <div class="artwork-price">$195.00</div>
-                <button class="artwork-detail-btn trigger-quick-view" aria-label="View Artwork Details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-shimmer skeleton-card-image"></div>
+            <div class="skeleton-card-content"><span class="skeleton-text-line short"></span><span
+                class="skeleton-text-line long"></span><span class="skeleton-text-line medium"></span></div>
           </div>
-
-          <!-- Item 4 -->
-          <div class="artwork-card" data-title="Handcrafted Memories" data-category="Custom Designs" data-price="Custom Quote">
-            <div class="artwork-img-box">
-              <span class="badge badge-gold artwork-badge">Custom Request</span>
-              <img src="Images/art_handcrafted_memories.jpg" alt="Handcrafted Custom Memory Hoop" class="artwork-img" onerror="this.src='https://images.unsplash.com/photo-1506806732259-39c2d0268443?q=80&w=600&auto=format&fit=crop'">
-              <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
-            </div>
-            <div class="artwork-details">
-              <span class="artwork-category">Custom Designs</span>
-              <h3 class="artwork-title">Handcrafted Memories</h3>
-              <div class="artwork-footer">
-                <div class="artwork-price"><span class="custom-tag">Custom Quote</span></div>
-                <button class="artwork-detail-btn trigger-quick-view" aria-label="View Artwork Details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-shimmer skeleton-card-image"></div>
+            <div class="skeleton-card-content"><span class="skeleton-text-line short"></span><span
+                class="skeleton-text-line long"></span><span class="skeleton-text-line medium"></span></div>
           </div>
-
-          <!-- Item 5 -->
-          <div class="artwork-card" data-title="Noor-e-Art" data-category="Islamic Art" data-price="$220.00">
-            <div class="artwork-img-box">
-              <img src="Images/art_noor_e_art.jpg" alt="Noor-e-Art Islamic Calligraphy" class="artwork-img" onerror="this.src='https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=600&auto=format&fit=crop'">
-              <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
-            </div>
-            <div class="artwork-details">
-              <span class="artwork-category">Islamic Art</span>
-              <h3 class="artwork-title">Noor-e-Art</h3>
-              <div class="artwork-footer">
-                <div class="artwork-price">$220.00</div>
-                <button class="artwork-detail-btn trigger-quick-view" aria-label="View Artwork Details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-shimmer skeleton-card-image"></div>
+            <div class="skeleton-card-content"><span class="skeleton-text-line short"></span><span
+                class="skeleton-text-line long"></span><span class="skeleton-text-line medium"></span></div>
           </div>
-
-          <!-- Item 6 -->
-          <div class="artwork-card" data-title="Custom Portrait Embroidery" data-category="Custom Designs" data-price="Custom Quote">
-            <div class="artwork-img-box">
-              <span class="badge badge-dark artwork-badge">Personalized</span>
-              <img src="Images/art_custom_portrait.jpg" alt="Custom Portrait Thread Artwork" class="artwork-img" onerror="this.src='https://images.unsplash.com/photo-1576014131693-570568942718?q=80&w=600&auto=format&fit=crop'">
-              <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
-            </div>
-            <div class="artwork-details">
-              <span class="artwork-category">Custom Designs</span>
-              <h3 class="artwork-title">Custom Portrait Embroidery</h3>
-              <div class="artwork-footer">
-                <div class="artwork-price"><span class="custom-tag">Custom Quote</span></div>
-                <button class="artwork-detail-btn trigger-quick-view" aria-label="View Artwork Details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-shimmer skeleton-card-image"></div>
+            <div class="skeleton-card-content"><span class="skeleton-text-line short"></span><span
+                class="skeleton-text-line long"></span><span class="skeleton-text-line medium"></span></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ==========================================================================
-         7. WHY CHOOSE SHAH EMBROIDERY & ART
-         ========================================================================== -->
-    <section class="section-padding" id="why-choose">
-      <div class="container">
-        <div class="text-center">
-          <span class="section-subtitle">THE SHAH EMBROIDERY PROMISE</span>
-          <h2 class="section-title">Why Choose Shah Embroidery & Art</h2>
-          <p class="section-description">Dedicated to delivering unmatched artistic quality, meticulous detail, and personal touch in every single stitch.</p>
-        </div>
-
-        <div class="features-grid">
-          <!-- Feature 1 -->
-          <div class="feature-card">
-            <div class="feature-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-            </div>
-            <h3 class="feature-title">16 Years of Experience</h3>
-            <p class="feature-text">Craftsmanship developed through years of dedication and artistic passion by founder Syeda Tauseefa Abrar.</p>
-          </div>
-
-          <!-- Feature 2 -->
-          <div class="feature-card">
-            <div class="feature-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-              </svg>
-            </div>
-            <h3 class="feature-title">Handcrafted with Care</h3>
-            <p class="feature-text">Every piece is created with attention to detail and precision, ensuring true heirloom artistic value.</p>
-          </div>
-
-          <!-- Feature 3 -->
-          <div class="feature-card">
-            <div class="feature-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-              </svg>
-            </div>
-            <h3 class="feature-title">Custom Creations</h3>
-            <p class="feature-text">Personalized artwork designed around your unique ideas, color themes, and special requirements.</p>
-          </div>
-
-          <!-- Feature 4 -->
-          <div class="feature-card">
-            <div class="feature-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-              </svg>
-            </div>
-            <h3 class="feature-title">Made with Passion</h3>
-            <p class="feature-text">Every stitch represents creativity, patience, and deep love for the traditional art of embroidery.</p>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <!-- ==========================================================================
          8. EXPERIENCE / BRAND STORY SECTION
@@ -481,25 +269,25 @@
           <!-- Story Image & Floating Badge -->
           <div class="story-image-container">
             <div class="story-image-wrapper">
-              <img src="Images/brand_artisan.jpg" alt="Syeda Tauseefa Abrar Artisan Atelier" class="story-image" onerror="this.src='https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=800&auto=format&fit=crop'">
+              <img src="Images/brand_artisan.jpg" alt="Syeda Tauseefa Abrar Artisan Atelier" class="story-image"
+                onerror="this.src='https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=800&auto=format&fit=crop'">
             </div>
-            <div class="story-badge-card">
-              <h4>16+</h4>
-              <p>Years of Masterful Handcrafting Experience</p>
-            </div>
+
           </div>
 
           <!-- Story Text Content -->
           <div class="story-content">
             <span class="section-subtitle">OUR JOURNEY & PASSION</span>
             <h2 class="section-title">16 Years of Turning Threads into Art</h2>
-            
+
             <p style="color: var(--text-secondary); margin-bottom: 16px;">
-              Founded by <strong>Syeda Tauseefa Abrar</strong>, Shah Embroidery & Art is built upon sixteen years of artistic mastery, patience, and passion for handmade textile art.
+              Founded by <strong>Syeda Tauseefa Abrar</strong>, Shah Embroidery & Art is built upon sixteen years of
+              artistic mastery, patience, and passion for handmade textile art.
             </p>
-            
+
             <p style="color: var(--text-secondary);">
-              What started as a personal artistic journey has evolved into a trusted craft atelier, bringing bespoke embroidery, detailed hoop art, and traditional needlework to art lovers around the world.
+              What started as a personal artistic journey has evolved into a trusted craft atelier, bringing bespoke
+              embroidery, detailed hoop art, and traditional needlework to art lovers around the world.
             </p>
 
             <div class="story-quote">
@@ -513,9 +301,7 @@
               </div>
             </div>
 
-            <div style="margin-top: 32px;">
-              <a href="#contact" class="btn btn-primary">Learn Our Story</a>
-            </div>
+
           </div>
         </div>
       </div>
@@ -530,11 +316,12 @@
           <span class="section-subtitle">SPECIAL COMMISSIONS</span>
           <h2 class="section-title">Have an Idea? Let's Create Something Beautiful.</h2>
           <p class="section-description" style="max-width: 680px;">
-            Share your vision with us and let us transform it into a unique handmade creation. Whether it's a family portrait, wedding gift, or custom home art piece.
+            Share your vision with us and let us transform it into a unique handmade creation. Whether it's a family
+            portrait, wedding gift, or custom home art piece.
           </p>
 
           <div class="cta-buttons">
-            <button class="btn btn-primary trigger-custom-modal">Request a Custom Order</button>
+            <a href="custom-order.html" class="btn btn-primary">Request a Custom Order</a>
             <a href="#contact" class="btn btn-outline">Contact Us</a>
           </div>
         </div>
@@ -549,7 +336,9 @@
         <div class="text-center">
           <span class="section-subtitle">ARTWORK PORTFOLIO</span>
           <h2 class="section-title">Artistic Gallery Showcase</h2>
-          <p class="section-description">Browse through our collection of handcrafted thread art, custom commissions, and floral hoop pieces.</p>
+          <p class="section-description">Browse through our collection of handcrafted thread art, custom
+            commissions,
+            and floral hoop pieces.</p>
         </div>
 
         <!-- Filter Category Tabs -->
@@ -564,7 +353,8 @@
         <!-- Gallery Grid -->
         <div class="gallery-grid">
           <div class="gallery-item tall" data-category="hoop">
-            <img src="Images/gallery_1.jpg" alt="Embroidery Artwork" class="gallery-img" onerror="this.src='https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=600&auto=format&fit=crop'">
+            <img src="Images/gallery_1.jpg" alt="Embroidery Artwork" class="gallery-img"
+              onerror="this.src='https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=600&auto=format&fit=crop'">
             <div class="gallery-overlay">
               <span class="gallery-overlay-cat">Hoop Art</span>
               <h4 class="gallery-overlay-title">Botanical Symphony</h4>
@@ -572,7 +362,8 @@
           </div>
 
           <div class="gallery-item" data-category="wall">
-            <img src="Images/gallery_2.jpg" alt="Embroidery Artwork" class="gallery-img" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600&auto=format&fit=crop'">
+            <img src="Images/gallery_2.jpg" alt="Embroidery Artwork" class="gallery-img"
+              onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600&auto=format&fit=crop'">
             <div class="gallery-overlay">
               <span class="gallery-overlay-cat">Wall Art</span>
               <h4 class="gallery-overlay-title">Traditional Tapestry</h4>
@@ -580,7 +371,8 @@
           </div>
 
           <div class="gallery-item" data-category="custom">
-            <img src="Images/gallery_3.jpg" alt="Embroidery Artwork" class="gallery-img" onerror="this.src='https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=600&auto=format&fit=crop'">
+            <img src="Images/gallery_3.jpg" alt="Embroidery Artwork" class="gallery-img"
+              onerror="this.src='https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=600&auto=format&fit=crop'">
             <div class="gallery-overlay">
               <span class="gallery-overlay-cat">Custom Designs</span>
               <h4 class="gallery-overlay-title">Monogram Keepsake</h4>
@@ -588,7 +380,8 @@
           </div>
 
           <div class="gallery-item tall" data-category="bridal">
-            <img src="Images/gallery_4.jpg" alt="Embroidery Artwork" class="gallery-img" onerror="this.src='https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=600&auto=format&fit=crop'">
+            <img src="Images/gallery_4.jpg" alt="Embroidery Artwork" class="gallery-img"
+              onerror="this.src='https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=600&auto=format&fit=crop'">
             <div class="gallery-overlay">
               <span class="gallery-overlay-cat">Bridal & Wedding</span>
               <h4 class="gallery-overlay-title">Golden Zardozi Crest</h4>
@@ -596,7 +389,8 @@
           </div>
 
           <div class="gallery-item" data-category="hoop">
-            <img src="Images/gallery_5.jpg" alt="Embroidery Artwork" class="gallery-img" onerror="this.src='https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop'">
+            <img src="Images/gallery_5.jpg" alt="Embroidery Artwork" class="gallery-img"
+              onerror="this.src='https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop'">
             <div class="gallery-overlay">
               <span class="gallery-overlay-cat">Hoop Art</span>
               <h4 class="gallery-overlay-title">Wildflower Wreath</h4>
@@ -604,7 +398,8 @@
           </div>
 
           <div class="gallery-item" data-category="custom">
-            <img src="Images/gallery_6.jpg" alt="Embroidery Artwork" class="gallery-img" onerror="this.src='https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=600&auto=format&fit=crop'">
+            <img src="Images/gallery_6.jpg" alt="Embroidery Artwork" class="gallery-img"
+              onerror="this.src='https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=600&auto=format&fit=crop'">
             <div class="gallery-overlay">
               <span class="gallery-overlay-cat">Custom Designs</span>
               <h4 class="gallery-overlay-title">Family Tree Embroidery</h4>
@@ -613,7 +408,7 @@
         </div>
 
         <div class="text-center" style="margin-top: 20px;">
-          <a href="#gallery" class="btn btn-outline-gold">Explore Full Gallery</a>
+          <a href="shop.html" class="btn btn-outline-gold">Shop the Collection</a>
         </div>
       </div>
     </section>
@@ -627,7 +422,9 @@
           <div class="trust-strip-item">
             <div class="trust-strip-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                </path>
               </svg>
             </div>
             <div class="trust-strip-text">
@@ -652,7 +449,9 @@
           <div class="trust-strip-item">
             <div class="trust-strip-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                </polygon>
               </svg>
             </div>
             <div class="trust-strip-text">
@@ -666,7 +465,8 @@
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                </path>
               </svg>
             </div>
             <div class="trust-strip-text">
@@ -686,14 +486,18 @@
         <div class="text-center">
           <span class="section-subtitle">CLIENT EXPERIENCE</span>
           <h2 class="section-title">Words of Appreciation</h2>
-          <p class="section-description">Read what our clients say about their custom commissions and handcrafted thread artworks.</p>
+          <p class="section-description">Read what our clients say about their custom commissions and handcrafted
+            thread
+            artworks.</p>
         </div>
 
         <div class="testimonials-grid">
           <!-- Card 1 -->
           <div class="testimonial-card">
             <div class="stars">★★★★★</div>
-            <p class="testimonial-quote">"The level of detail on my custom bridal hoop was beyond breathtaking. Syeda Tauseefa Abrar captured every detail with perfection. A true treasure for a lifetime!"</p>
+            <p class="testimonial-quote">"The level of detail on my custom bridal hoop was beyond breathtaking.
+              Syeda
+              Tauseefa Abrar captured every detail with perfection. A true treasure for a lifetime!"</p>
             <div class="client-meta">
               <div class="client-avatar">A</div>
               <div class="client-info">
@@ -706,7 +510,8 @@
           <!-- Card 2 -->
           <div class="testimonial-card">
             <div class="stars">★★★★★</div>
-            <p class="testimonial-quote">"I ordered a customized portrait embroidery for my anniversary. The craftsmanship, color choices, and intricate stitching blew us away. Highly recommended!"</p>
+            <p class="testimonial-quote">"I ordered a customized portrait embroidery for my anniversary. The
+              craftsmanship, color choices, and intricate stitching blew us away. Highly recommended!"</p>
             <div class="client-meta">
               <div class="client-avatar">S</div>
               <div class="client-info">
@@ -719,7 +524,9 @@
           <!-- Card 3 -->
           <div class="testimonial-card">
             <div class="stars">★★★★★</div>
-            <p class="testimonial-quote">"Beautiful Islamic calligraphy piece! The gold threadwork glistens so nicely in our living room. You can feel the 16 years of experience in every stitch."</p>
+            <p class="testimonial-quote">"Beautiful Islamic calligraphy piece! The gold threadwork glistens so
+              nicely in
+              our living room. You can feel the 16 years of experience in every stitch."</p>
             <div class="client-meta">
               <div class="client-avatar">Z</div>
               <div class="client-info">
@@ -740,14 +547,16 @@
         <div class="text-center">
           <span class="section-subtitle">GET IN TOUCH</span>
           <h2 class="section-title">Connect with Shah Embroidery & Art</h2>
-          <p class="section-description">Have questions regarding a custom order, workshop inquiry, or artwork collection? Send us a message.</p>
+          <p class="section-description">Have questions regarding a custom order, workshop inquiry, or artwork
+            collection? Send us a message.</p>
         </div>
 
         <div class="contact-grid">
           <!-- Info Details Card -->
           <div class="contact-info-card">
-            <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 24px;">Atelier Details</h3>
-            
+            <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 24px;">Atelier Details
+            </h3>
+
             <div class="contact-item">
               <div class="contact-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -764,7 +573,9 @@
             <div class="contact-item">
               <div class="contact-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  <path
+                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                  </path>
                 </svg>
               </div>
               <div class="contact-detail">
@@ -787,22 +598,27 @@
             </div>
 
             <div class="social-links">
-              <a href="#" class="social-icon" aria-label="Instagram">
+              <a href="https://www.instagram.com/shah-embroidery" class="social-icon" aria-label="Instagram"
+                target="_blank" rel="noopener noreferrer">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
                 </svg>
               </a>
-              <a href="#" class="social-icon" aria-label="Facebook">
+              <a href="https://www.facebook.com/shah-embroidery" class="social-icon" aria-label="Facebook"
+                target="_blank" rel="noopener noreferrer">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
                 </svg>
               </a>
-              <a href="#" class="social-icon" aria-label="Pinterest">
+              <a href="https://www.pinterest.com/shah-embroidery" class="social-icon" aria-label="Pinterest"
+                target="_blank" rel="noopener noreferrer">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0z"></path>
-                  <path d="M12 2a10 10 0 0 0-3.16 19.49c-.09-.8-.17-2.03.04-2.91.18-.79 1.17-4.98 1.17-4.98s-.3-.6-.3-1.48c0-1.39.81-2.43 1.81-2.43.85 0 1.27.64 1.27 1.41 0 .86-.55 2.14-.83 3.33-.24 1 .5 1.81 1.48 1.81 1.78 0 3.15-1.88 3.15-4.59 0-2.4-1.72-4.08-4.19-4.08-2.85 0-4.53 2.14-4.53 4.35 0 .86.33 1.78.74 2.28.08.1.09.19.07.29-.07.31-.24 .98-.27 1.12-.04.18-.15.22-.35.13-1.31-.61-2.13-2.52-2.13-4.06 0-3.3 2.4-6.34 6.93-6.34 3.64 0 6.47 2.59 6.47 6.06 0 3.61-2.28 6.52-5.44 6.52-1.06 0-2.06-.55-2.4-1.2l-.65 2.49c-.24.91-.88 2.05-1.31 2.74A10 10 0 1 0 12 2z"></path>
+                  <path
+                    d="M12 2a10 10 0 0 0-3.16 19.49c-.09-.8-.17-2.03.04-2.91.18-.79 1.17-4.98 1.17-4.98s-.3-.6-.3-1.48c0-1.39.81-2.43 1.81-2.43.85 0 1.27.64 1.27 1.41 0 .86-.55 2.14-.83 3.33-.24 1 .5 1.81 1.48 1.81 1.78 0 3.15-1.88 3.15-4.59 0-2.4-1.72-4.08-4.19-4.08-2.85 0-4.53 2.14-4.53 4.35 0 .86.33 1.78.74 2.28.08.1.09.19.07.29-.07.31-.24 .98-.27 1.12-.04.18-.15.22-.35.13-1.31-.61-2.13-2.52-2.13-4.06 0-3.3 2.4-6.34 6.93-6.34 3.64 0 6.47 2.59 6.47 6.06 0 3.61-2.28 6.52-5.44 6.52-1.06 0-2.06-.55-2.4-1.2l-.65 2.49c-.24.91-.88 2.05-1.31 2.74A10 10 0 1 0 12 2z">
+                  </path>
                 </svg>
               </a>
             </div>
@@ -810,8 +626,9 @@
 
           <!-- Contact Form Card -->
           <div class="contact-form-card">
-            <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 24px;">Send a Inquiry</h3>
-            
+            <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 24px;">Send a Inquiry
+            </h3>
+
             <form id="mainContactForm">
               <div class="form-group">
                 <label class="form-label" for="contactName">Your Full Name</label>
@@ -835,7 +652,9 @@
 
               <div class="form-group">
                 <label class="form-label" for="contactMessage">Your Message</label>
-                <textarea id="contactMessage" class="form-textarea" placeholder="Tell us about your desired artwork idea, dimensions, or questions..." required></textarea>
+                <textarea id="contactMessage" class="form-textarea"
+                  placeholder="Tell us about your desired artwork idea, dimensions, or questions..."
+                  required></textarea>
               </div>
 
               <button type="submit" class="btn btn-primary" style="width: 100%;">Send Message</button>
@@ -856,13 +675,12 @@
         <!-- Col 1: Brand -->
         <div class="footer-brand">
           <a href="#home" class="logo">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
+            <img src="Images/logo.png" alt="Shah Embroidery & Art" width="70px" height="70px">
             <span>Shah Embroidery & Art</span>
           </a>
           <p class="footer-desc">
-            Handcrafted embroidery and artistic textile creations by Syeda Tauseefa Abrar. Celebrating 16 years of craft excellence.
+            Handcrafted embroidery and artistic textile creations by Syeda Tauseefa Abrar. Celebrating 16 years of craft
+            excellence.
           </p>
         </div>
 
@@ -871,24 +689,12 @@
           <h4 class="footer-heading">Quick Links</h4>
           <div class="footer-links">
             <a href="#home">Home</a>
-            <a href="#about">About Syeda Tauseefa Abrar</a>
-            <a href="#gallery">Artwork Gallery</a>
-            <a href="#collections">Featured Collections</a>
+            <a href="#collections">Collections</a>
+            <a href="#about">About</a>
             <a href="#custom-orders">Custom Orders</a>
-            <a href="#contact">Contact Atelier</a>
-          </div>
-        </div>
-
-        <!-- Col 3: Artwork Categories -->
-        <div>
-          <h4 class="footer-heading">Categories</h4>
-          <div class="footer-links">
-            <a href="#gallery">Hand Embroidery</a>
-            <a href="#gallery">Decorative Hoop Art</a>
-            <a href="#gallery">Fabric Wall Art</a>
-            <a href="#custom-orders">Custom Portraits</a>
-            <a href="#gallery">Bridal Keepsakes</a>
-            <a href="#gallery">Islamic Thread Art</a>
+            <a href="#gallery">Artwork Gallery</a>
+            <a href="#testimonials">Testimonials</a>
+            <a href="#contact">Contact</a>
           </div>
         </div>
 
@@ -898,111 +704,28 @@
           <p style="font-size: 0.9rem; color: #B5A89E; margin-bottom: 14px;">
             Subscribe to receive updates on new artwork releases and custom commission slots.
           </p>
-          <form class="newsletter-form" onsubmit="event.preventDefault(); alert('Thank you for subscribing to Shah Embroidery & Art updates!');">
+          <form class="newsletter-form"
+            onsubmit="event.preventDefault(); window.showToast('Thank you for subscribing to Shah Embroidery &amp; Art updates!'); this.reset();">
             <input type="email" class="newsletter-input" placeholder="Your email address" required>
-            <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Join</button>
+            <button type="submit" class="btn btn-outline-gold" style="padding: 10px 20px;">Join</button>
           </form>
         </div>
       </div>
 
       <div class="footer-bottom">
         <p>&copy; 2026 Shah Embroidery & Art. All Rights Reserved.</p>
-        <p>Crafted with Passion & Precision | Owner: Syeda Tauseefa Abrar (16 Years Craftsmanship)</p>
+
       </div>
     </div>
   </footer>
 
-  <!-- ==========================================================================
-       MODALS & OVERLAYS
-       ========================================================================== -->
 
-  <!-- 1. Search Modal -->
-  <div class="modal-overlay" id="searchModal">
-    <div class="modal-container search-modal-container">
-      <div class="modal-close" id="searchClose">&times;</div>
-      <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 20px;">Search Artwork Collection</h3>
-      <div class="search-input-wrapper">
-        <svg class="search-icon-inside" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="searchInput" class="search-modal-input" placeholder="Type floral, hoop, portrait, or zardozi...">
-      </div>
-      <div style="font-size: 0.85rem; color: var(--text-muted);">
-        Popular searches: <a href="#gallery" style="color: var(--accent-gold); text-decoration: underline;">Floral Threadwork</a>, <a href="#gallery" style="color: var(--accent-gold); text-decoration: underline;">Hoop Art</a>, <a href="#custom-orders" style="color: var(--accent-gold); text-decoration: underline;">Custom Monogram</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- 2. Custom Order Inquiry Modal -->
-  <div class="modal-overlay" id="customOrderModal">
-    <div class="modal-container">
-      <div class="modal-close" id="customModalClose">&times;</div>
-      <h3 style="font-family: var(--font-heading); font-size: 2rem; margin-bottom: 10px;">Request a Custom Order</h3>
-      <p style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 24px;">
-        Share your vision with Syeda Tauseefa Abrar for a bespoke embroidered piece tailored to your desires.
-      </p>
-
-      <form id="customOrderForm">
-        <div class="form-group">
-          <label class="form-label" for="customName">Your Full Name</label>
-          <input type="text" id="customName" class="form-input" placeholder="Enter your name" required>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="customEmail">Email Address</label>
-          <input type="email" id="customEmail" class="form-input" placeholder="name@example.com" required>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="customType">Order Type</label>
-          <select id="customType" class="form-select">
-            <option value="portrait">Custom Family/Pet Portrait</option>
-            <option value="hoop">Custom Hoop Art Motif</option>
-            <option value="bridal">Bridal / Wedding Keepsake</option>
-            <option value="calligraphy">Custom Islamic Calligraphy</option>
-            <option value="other">Other Unique Craft Idea</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="customDetails">Design Description & Specifications</label>
-          <textarea id="customDetails" class="form-textarea" placeholder="Describe desired colors, pattern ideas, dimensions, or deadline..." required></textarea>
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Custom Request</button>
-      </form>
-      <div id="customFormFeedback" style="display: none; margin-top: 15px;"></div>
-    </div>
-  </div>
-
-  <!-- 3. Artwork Quick View Modal Lightbox -->
-  <div class="modal-overlay" id="quickViewModal">
-    <div class="modal-container" style="max-width: 800px; padding: 0; overflow: hidden;">
-      <div class="modal-close" id="quickViewClose" style="z-index: 10;">&times;</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr;">
-        <div style="background-color: var(--bg-surface); min-height: 380px;">
-          <img id="quickViewImg" src="" alt="Artwork Detail" style="width: 100%; height: 100%; object-fit: cover;">
-        </div>
-        <div style="padding: 36px;">
-          <span id="quickViewCategory" class="artwork-category" style="margin-bottom: 8px; display: block;">HOOP ART</span>
-          <h3 id="quickViewTitle" style="font-family: var(--font-heading); font-size: 2rem; color: var(--text-primary); margin-bottom: 12px;">Artwork Title</h3>
-          <div id="quickViewPrice" style="font-size: 1.4rem; font-weight: 700; color: var(--accent-gold); margin-bottom: 18px;">$140.00</div>
-          
-          <p style="font-size: 0.925rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px;">
-            Intricately hand-embroidered using premium silk threads on natural linen backing. Crafted by Syeda Tauseefa Abrar (16 Years Craftsmanship).
-          </p>
-
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <button class="btn btn-primary trigger-custom-modal" style="width: 100%;">Inquire About This Piece</button>
-            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">100% Handcrafted • Worldwide Shipping Available</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- JavaScript -->
-  <script src="js/script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/script.js?v=20260903-auth-fix"></script>
+  <script src="js/product-loader.js"></script>
 </body>
+
 </html>

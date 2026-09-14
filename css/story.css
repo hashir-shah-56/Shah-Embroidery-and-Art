@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Experience / Brand Story Section Styles
+   ========================================================================== */
+.story-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.story-image-container {
+  position: relative;
+}
+
+.story-image-wrapper {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.story-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.story-badge-card {
+  position: absolute;
+  bottom: -24px;
+  right: -24px;
+  background-color: var(--text-primary);
+  color: #FFFFFF;
+  padding: 24px 30px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-width: 240px;
+}
+
+.story-badge-card h4 {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  color: var(--accent-gold);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.story-badge-card p {
+  font-size: 0.85rem;
+  color: var(--bg-surface);
+  line-height: 1.4;
+}
+
+.story-content {
+  padding-right: 20px;
+}
+
+.story-quote {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 1.25rem;
+  color: var(--accent-taupe);
+  border-left: 3px solid var(--accent-gold);
+  padding-left: 18px;
+  margin: 24px 0;
+  line-height: 1.5;
+}
+
+.story-owner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.owner-title h5 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.owner-title span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

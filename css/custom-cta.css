@@ -1,0 +1,22 @@
+/* ==========================================================================
+   Custom Order CTA Section Styles
+   ========================================================================== */
+.custom-cta-wrapper {
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  padding: 80px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.cta-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 36px;
+}

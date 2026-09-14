@@ -1,0 +1,130 @@
+/* ==========================================================================
+   Form Input Controls & Validation Error Styles
+   ========================================================================== */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: var(--accent-gold);
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
+}
+
+.form-input.form-input-error,
+.form-textarea.form-input-error,
+.form-select.form-input-error {
+  border-color: #C4453A !important;
+  box-shadow: 0 0 0 3px rgba(196, 69, 58, 0.12) !important;
+}
+
+.form-input.form-input-valid,
+.form-textarea.form-input-valid,
+.form-select.form-input-valid,
+.newsletter-input.form-input-valid {
+  border-color: #6F8F72 !important;
+  box-shadow: 0 0 0 3px rgba(111, 143, 114, 0.12) !important;
+}
+
+.form-input:disabled,
+.form-textarea:disabled,
+.form-select:disabled,
+button[type="submit"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.form-error-text {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #C4453A;
+  margin-top: 4px;
+  min-height: 16px;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.password-strength {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.password-strength::before {
+  content: '';
+  grid-column: 1;
+  grid-row: 1;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background-color: var(--border-color);
+}
+
+.password-strength-bar {
+  grid-column: 1;
+  grid-row: 1;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background-color: #C4453A;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.password-strength[data-level="medium"] .password-strength-bar {
+  background-color: var(--accent-gold);
+}
+
+.password-strength[data-level="strong"] .password-strength-bar {
+  background-color: #6F8F72;
+}
+
+.password-strength-label,
+.character-counter {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.password-strength-label {
+  min-width: 48px;
+  text-align: right;
+}
+
+.character-counter {
+  display: block;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.category-add-new-option {
+  color: var(--accent-gold) !important;
+  font-weight: 700 !important;
+}
