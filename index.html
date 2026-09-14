@@ -212,7 +212,7 @@
         <div class="artwork-header">
           <div>
             <span class="section-subtitle">HANDCRAFTED SELECTION</span>
-            <h2 class="section-title" style="margin-bottom: 0;">Featured Creations</h2>
+            <h2 class="section-title" style="margin-bottom: 0;">Latest Creations</h2>
           </div>
           <a href="shop.html" class="view-all-link" id="viewAllArtworkLink">
             View All Artwork
@@ -336,76 +336,14 @@
         <div class="text-center">
           <span class="section-subtitle">ARTWORK PORTFOLIO</span>
           <h2 class="section-title">Artistic Gallery Showcase</h2>
-          <p class="section-description">Browse through our collection of handcrafted thread art, custom
-            commissions,
-            and floral hoop pieces.</p>
+          <p class="section-description">Browse through our collections.</p>
         </div>
 
         <!-- Filter Category Tabs -->
-        <div class="gallery-tabs">
-          <button class="tab-btn active" data-filter="all">All Artwork</button>
-          <button class="tab-btn" data-filter="hoop">Hoop Art</button>
-          <button class="tab-btn" data-filter="wall">Wall Art</button>
-          <button class="tab-btn" data-filter="custom">Custom Designs</button>
-          <button class="tab-btn" data-filter="bridal">Bridal & Wedding</button>
-        </div>
+        <div class="gallery-tabs" id="galleryFilters" aria-label="Filter gallery by category"></div>
 
         <!-- Gallery Grid -->
-        <div class="gallery-grid">
-          <div class="gallery-item tall" data-category="hoop">
-            <img src="Images/gallery_1.jpg" alt="Embroidery Artwork" class="gallery-img"
-              onerror="this.src='https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=600&auto=format&fit=crop'">
-            <div class="gallery-overlay">
-              <span class="gallery-overlay-cat">Hoop Art</span>
-              <h4 class="gallery-overlay-title">Botanical Symphony</h4>
-            </div>
-          </div>
-
-          <div class="gallery-item" data-category="wall">
-            <img src="Images/gallery_2.jpg" alt="Embroidery Artwork" class="gallery-img"
-              onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600&auto=format&fit=crop'">
-            <div class="gallery-overlay">
-              <span class="gallery-overlay-cat">Wall Art</span>
-              <h4 class="gallery-overlay-title">Traditional Tapestry</h4>
-            </div>
-          </div>
-
-          <div class="gallery-item" data-category="custom">
-            <img src="Images/gallery_3.jpg" alt="Embroidery Artwork" class="gallery-img"
-              onerror="this.src='https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=600&auto=format&fit=crop'">
-            <div class="gallery-overlay">
-              <span class="gallery-overlay-cat">Custom Designs</span>
-              <h4 class="gallery-overlay-title">Monogram Keepsake</h4>
-            </div>
-          </div>
-
-          <div class="gallery-item tall" data-category="bridal">
-            <img src="Images/gallery_4.jpg" alt="Embroidery Artwork" class="gallery-img"
-              onerror="this.src='https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=600&auto=format&fit=crop'">
-            <div class="gallery-overlay">
-              <span class="gallery-overlay-cat">Bridal & Wedding</span>
-              <h4 class="gallery-overlay-title">Golden Zardozi Crest</h4>
-            </div>
-          </div>
-
-          <div class="gallery-item" data-category="hoop">
-            <img src="Images/gallery_5.jpg" alt="Embroidery Artwork" class="gallery-img"
-              onerror="this.src='https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop'">
-            <div class="gallery-overlay">
-              <span class="gallery-overlay-cat">Hoop Art</span>
-              <h4 class="gallery-overlay-title">Wildflower Wreath</h4>
-            </div>
-          </div>
-
-          <div class="gallery-item" data-category="custom">
-            <img src="Images/gallery_6.jpg" alt="Embroidery Artwork" class="gallery-img"
-              onerror="this.src='https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=600&auto=format&fit=crop'">
-            <div class="gallery-overlay">
-              <span class="gallery-overlay-cat">Custom Designs</span>
-              <h4 class="gallery-overlay-title">Family Tree Embroidery</h4>
-            </div>
-          </div>
-        </div>
+        <div class="gallery-grid" id="galleryGrid" aria-busy="true"></div>
 
         <div class="text-center" style="margin-top: 20px;">
           <a href="shop.html" class="btn btn-outline-gold">Shop the Collection</a>
@@ -726,6 +664,7 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/script.js?v=20260903-auth-fix"></script>
   <script src="js/product-loader.js"></script>
+  <script src="js/gallery-loader.js"></script>
 </body>
 </html>
 

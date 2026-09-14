@@ -203,7 +203,7 @@ Shah Embroidery/
 - Category changes reset to page 1. Numbered pagination includes Previous/Next boundary states and a truncated page list for large catalogs. Page changes scroll to the product results; filter tabs scroll horizontally on mobile.
 - `?category=Hoop%20Art&page=2` links restore the requested view (matching case-insensitively per Postel's / Tesler's Law). Back/forward navigation restores filter/page state, invalid parameters normalize safely, and out-of-range pages resolve to the last available page.
 - Shows artwork skeletons during fetching, an empty-category state with a View All Artwork button, and a retryable error state. Stale responses cannot overwrite newer filter choices.
-- The homepage's **View All Artwork** and **Explore Full Gallery** links point to `shop.html`. The static portfolio gallery remains unchanged.
+- The homepage's **View All Artwork** and **Explore Full Gallery** links point to `shop.html`. The homepage gallery is a live Supabase showcase of up to 12 newest in-stock products and shares the catalog's dynamic category names.
 
 ### Dynamic Product Category Architecture & Admin Management
 
@@ -229,8 +229,8 @@ Product categories are fully dynamic and driven entirely by real category names 
 - **Description:** Prominent full-width banner calling users to request personalized embroidery projects (portraits, names, wedding dates). Links open the standalone `custom-order.html` request page.
 
 ### 11. Interactive Gallery with Filter Tabs (`#gallery`)
-- **Description:** Portfolio grid featuring filter buttons (*All, Hoop Art, Wall Art, Custom Portraits, Islamic Art*).
-- **Interactive Behavior:** Clicking filter pills smoothly filters items using CSS opacity and transform transitions.
+- **Description:** Fully dynamic masonry portfolio grid loaded from the Supabase `products` table, showing up to 12 newest in-stock products with the shared, alphabetically sorted category list.
+- **Interactive Behavior:** Category tabs filter the live results by their exact database names. Clicking or keyboard-activating any gallery item opens a dedicated view-only Gallery modal with the product image, description, category, and informational price. The modal links softly to `shop.html` without exposing Add to Cart. Loading skeletons and productive empty states cover slow, empty, and category-specific results.
 
 ### 12. Trust Strip & Testimonials (`#testimonials`)
 - **Description:** Client feedback cards featuring star ratings, review text, customer names, and trust indicators (*Secure Packaging, Quality Guarantee*).
@@ -455,6 +455,18 @@ Credentials live in `js/supabase-client.js`; real values must not be committed t
 - Validation on 2026-09-14: admin browser regression passed with no Is Featured form control. The live homepage request was `in_stock=eq.true&order=created_at.desc&limit=6`, contained no `is_featured` filter, rendered without runtime errors, and returned the current newest in-stock catalog result.
 
 ## 11. Change Log
+
+### [2026-09-14] - View-Only Gallery Modal
+- Gallery items now open a dedicated informational modal with a prominent image, description, category, and price, leaving transactional Quick View behavior unchanged for Latest Work and Shop.
+
+### [2026-09-14] - Fixed Gallery Grid Sizing
+- Updated Gallery sizing to use `auto-fill` with 260px minimum tracks, left alignment, and a 320px item maximum. Tall items retain their 580px height across responsive breakpoints.
+
+### [2026-09-14] - Gallery Supabase Client Initialization Fix
+- Corrected the Gallery loader to use the shared top-level `supabaseClient` binding. The previous image-rendering diagnosis was superseded: the loader was returning before its query because `window.supabaseClient` is not populated by the shared client script.
+
+### [2026-09-14] - Supabase Dynamic Homepage Gallery
+- Replaced the static homepage gallery with a live Supabase view of the newest in-stock products, shared dynamic category tabs, loading/empty states, and whole-item Quick View interactions.
 
 ### [2026-09-14] — Latest Work Recency Feed
 - Removed the homepage `is_featured` filter so Latest Work always shows the six newest in-stock products.

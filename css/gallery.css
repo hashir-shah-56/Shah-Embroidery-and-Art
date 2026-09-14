@@ -31,7 +31,8 @@
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  justify-content: start;
   gap: 20px;
   margin-bottom: 40px;
 }
@@ -40,6 +41,8 @@
   position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
+  max-width: 320px;
+  width: 100%;
   height: 280px;
   box-shadow: var(--shadow-sm);
   background-color: var(--bg-surface);
@@ -79,6 +82,47 @@
 
 .gallery-item:hover .gallery-img {
   transform: scale(1.08);
+}
+
+.gallery-view-modal-container {
+  max-width: 750px;
+}
+
+.gallery-view-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
+  gap: 28px;
+  align-items: center;
+}
+
+.gallery-view-image {
+  width: 100%;
+  height: 460px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.gallery-view-description {
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  line-height: 1.7;
+  margin: 14px 0;
+}
+
+.gallery-view-details .artwork-price {
+  margin-bottom: 22px;
+}
+
+@media (max-width: 700px) {
+  .gallery-view-content {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .gallery-view-image {
+    height: 300px;
+  }
 }
 
 .gallery-overlay-cat {

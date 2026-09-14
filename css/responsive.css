@@ -12,8 +12,9 @@
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: clamp(12px, 2vw, 20px);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  justify-content: start;
+  gap: 20px;
 }
 
 .features-grid {
@@ -141,11 +142,6 @@
 
   .banner-image-wrapper {
     display: none;
-  }
-
-  .gallery-item.tall {
-    grid-row: auto;
-    height: 280px;
   }
 
   .testimonials-grid {
