@@ -32,13 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSubmitState();
   };
 
-  const user = getCurrentUser();
-  if (user) {
-    nameInput.value = user.name || '';
-    emailInput.value = user.email || '';
-    phoneInput.value = user.phone || '';
-    [nameInput, emailInput, phoneInput].forEach(field => field.dispatchEvent(new Event('input', { bubbles: true })));
-  }
+  window.customerAuth.populateProfileFields({ name: 'customName', email: 'customEmail', phone: 'customPhone' });
 
   typeInputs.forEach(input => input.addEventListener('change', setTypeState));
   timeline.addEventListener('change', () => {

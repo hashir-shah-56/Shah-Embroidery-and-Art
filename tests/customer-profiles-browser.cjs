@@ -1,0 +1,165 @@
+// Profile UI/SDK contract regressions. No real accounts, emails, or backend writes.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const { mockClient } = require('./customer-auth-browser.cjs');
+let playwright;
+try { playwright = require('playwright'); }
+catch { playwright = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/HP/.agents/skills/gstack/node_modules/playwright'); }
+const root = path.resolve(__dirname, '..');
+(async () => {
+  const server = http.createServer((req, res) => {
+    const file = path.resolve(root, '.' + req.url.split('?')[0]);
+    if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
+    fs.readFile(file, (error, body) => {
+      if (error) { res.writeHead(404); return res.end(); }
+      res.setHeader('Content-Type', ({ '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript' })[path.extname(file)] || 'application/octet-stream');
+      res.end(body);
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  let browser;
+  try {
+    browser = await playwright.chromium.launch({ channel: 'chrome', headless: true });
+    const context = await browser.newContext();
+    await context.route('https://**/*', route => route.fulfill({ body: '' }));
+    await context.route('**/js/supabase-client.js', route => route.fulfill({ contentType: 'application/javascript', body: `(${mockClient.toString()})();` }));
+    const page = await context.newPage(); const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const goto = async file => { await page.goto(base + '/' + file); await page.evaluate(() => customerAuth.ready); };
+    const settings = async () => { await page.locator('[data-section=settings]').click(); await page.locator('#settingsName').waitFor(); };
+    const save = async () => { await page.locator('#accountSettingsForm [type=submit]').click(); await page.waitForFunction(() => document.querySelector('#accountSettingsForm').dataset.busy === 'false'); };
+    await goto('index.html');
+    await page.evaluate(() => {
+      const id = '11111111-1111-4111-8111-111111111111';
+      localStorage.setItem('test-session', JSON.stringify({ id, email: 'test@example.com', user_metadata: { full_name: 'Obsolete Metadata' } }));
+      localStorage.setItem('test-profile', JSON.stringify({ id, full_name: 'Nadia Customer', phone: '+92 300 1234567', email: 'test@example.com', created_at: '2026-09-14', updated_at: '2026-09-14' }));
+      localStorage.setItem('shah_users', JSON.stringify([{ name: 'Untrusted', password: 'DO NOT IMPORT' }]));
+      localStorage.setItem('shah_current_user', JSON.stringify({ name: 'Untrusted' }));
+      ['shah_cart', 'shah_orders'].forEach(key => localStorage.setItem(key, '[]'));
+      ['shah_wishlist', 'shah_saved_addresses', 'shah_custom_order_requests'].forEach(key => localStorage.setItem(key, '{}'));
+    });
+    const localData = await page.evaluate(() => Object.fromEntries(['shah_cart','shah_orders','shah_wishlist','shah_saved_addresses','shah_custom_order_requests'].map(key => [key,localStorage.getItem(key)])));
+    await goto('profile.html'); await settings();
+    assert.equal(await page.locator('#settingsName').inputValue(), 'Nadia Customer');
+    assert.equal(await page.locator('#settingsPhone').inputValue(), '+92 300 1234567');
+    assert.equal(await page.locator('#navUserBadge').textContent(), 'N');
+    const reads = await page.evaluate(() => fixture.profileReads);
+    await page.evaluate(async () => { await customerAuth.refresh(); await customerAuth.refresh(); customerAuth.getCurrentProfile().full_name = 'Tampered cache'; });
+    assert.equal(await page.evaluate(() => fixture.profileReads), reads);
+    assert.equal(await page.evaluate(() => customerAuth.getCurrentProfile().full_name), 'Nadia Customer');
+    for (const width of [1440,1024,900,768,480,393,360]) {
+      await page.setViewportSize({ width, height: 850 });
+      await page.locator('#accountSettingsForm [type=submit]').scrollIntoViewIfNeeded();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`);
+      assert.ok((await page.locator('#accountSettingsForm [type=submit]').boundingBox()).height >= 44);
+      await page.locator('[data-section=orders]').click(); await settings();
+      if ([1440,393].includes(width)) await page.screenshot({ path: path.join(require('node:os').tmpdir(), `shah-profile-${width}.png`), fullPage: true });
+    }
+    await page.setViewportSize({ width: 393, height: 420 });
+    await page.locator('#settingsPhone').focus(); await page.locator('#accountSettingsForm [type=submit]').scrollIntoViewIfNeeded();
+    assert.equal(await page.locator('#accountSettingsForm [type=submit]').isVisible(), true);
+    await page.setViewportSize({ width: 1024, height: 850 });
+    console.log('PASS: database profile beats legacy/metadata, cache, all seven widths, tabs and shortened mobile viewport');
+    await page.locator('#settingsPhone').fill('abc');
+    assert.equal(await page.locator('#accountSettingsForm [type=submit]').isDisabled(), true);
+    await page.locator('#settingsPhone').fill('+92 311 7654321');
+    await page.locator('#settingsName').fill('A');
+    assert.equal(await page.locator('#accountSettingsForm [type=submit]').isDisabled(), true);
+    await page.locator('#settingsName').fill('Sara Customer');
+    await page.evaluate(() => { fixture.mode = 'profile-write'; }); await save();
+    assert.equal(await page.locator('#settingsName').inputValue(), 'Sara Customer');
+    assert.match(await page.locator('#siteToast').textContent(), /could not be saved/);
+    await page.evaluate(() => { fixture.mode = ''; window.testSaveDelay = 300; });
+    const writes = await page.evaluate(() => fixture.profileWrites.length);
+    await page.evaluate(() => { const form = document.querySelector('#accountSettingsForm'); form.requestSubmit(); form.requestSubmit(); });
+    await page.waitForFunction(() => document.querySelector('#accountSettingsForm').dataset.busy === 'false');
+    assert.equal(await page.evaluate(() => fixture.profileWrites.length), writes + 1);
+    assert.equal(await page.locator('#navUserBadge').textContent(), 'S');
+    assert.match(await page.locator('#profileWelcomeHeading').textContent(), /Sara/);
+    await goto('profile.html'); await settings();
+    assert.equal(await page.locator('#settingsName').inputValue(), 'Sara Customer');
+    assert.equal(await page.locator('#settingsPhone').inputValue(), '+92 311 7654321');
+    console.log('PASS: name/phone validation, retained failed edits, duplicate-save prevention, immediate avatar/header and persistence');
+    await page.locator('#settingsEmail').fill(' NEXT@EXAMPLE.COM '); await save();
+    assert.equal(await page.evaluate(() => customerAuth.getCurrentUser().email), 'next@example.com');
+    assert.equal(await page.evaluate(() => customerAuth.getCurrentProfile().email), 'next@example.com');
+    await page.evaluate(() => fixture.mode = 'email-pending');
+    await page.locator('#settingsEmail').fill('pending@example.com'); await save();
+    assert.equal(await page.locator('#settingsEmail').inputValue(), 'next@example.com');
+    assert.match(await page.locator('#siteToast').textContent(), /confirm your email change/);
+    await page.evaluate(async () => {
+      const value = JSON.parse(localStorage.getItem('test-session')); value.email = value.new_email; delete value.new_email;
+      localStorage.setItem('test-session', JSON.stringify(value)); fixture.mode = ''; await customerAuth.refreshCurrentProfile();
+    });
+    assert.equal(await page.evaluate(() => customerAuth.getCurrentProfile().email), 'pending@example.com');
+    await goto('profile.html'); await settings();
+    await page.locator('#settingsCurrentPassword').fill('Wrongpass1');
+    await page.locator('#settingsNewPassword').fill('weak'); await page.locator('#settingsConfirmPassword').fill('weak');
+    assert.equal(await page.locator('#accountSettingsForm [type=submit]').isDisabled(), true);
+    await page.locator('#settingsNewPassword').fill('Newstrong1'); await page.locator('#settingsConfirmPassword').fill('Newstrong1');
+    await save(); assert.match(await page.locator('#siteToast').textContent(), /Incorrect/);
+    await page.locator('#settingsCurrentPassword').fill('StrongPass1'); await save();
+    assert.equal(await page.evaluate(() => fixture.passwordChanged), true);
+    assert.equal(await page.locator('#settingsNewPassword').inputValue(), '');
+    assert.equal(await page.evaluate(() => fixture.profileWrites.some(write => /password/i.test(JSON.stringify(write)))), false);
+    assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('Newstrong1') || value.includes('StrongPass1'))), false);
+    console.log('PASS: immediate/pending email changes, Auth/profile synchronization, reauthentication SDK contract, password validation/no storage');
+    await goto('checkout.html');
+    assert.equal(await page.locator('#checkoutName').inputValue(), 'Sara Customer');
+    assert.equal(await page.locator('#checkoutPhone').inputValue(), '+92 311 7654321');
+    assert.equal(await page.locator('#checkoutEmail').inputValue(), 'pending@example.com');
+    await page.locator('#checkoutName').fill('Manual Name');
+    await page.evaluate(() => customerAuth.populateProfileFields({ name: 'checkoutName', email: 'checkoutEmail', phone: 'checkoutPhone' }));
+    assert.equal(await page.locator('#checkoutName').inputValue(), 'Manual Name');
+    await page.evaluate(() => localStorage.setItem('pendingCheckoutFormData', JSON.stringify({ checkoutName: 'Restored Customer', checkoutCountry: 'United States' })));
+    await goto('checkout.html');
+    assert.equal(await page.locator('#checkoutName').inputValue(), 'Restored Customer');
+    assert.equal(await page.locator('#checkoutCountry').inputValue(), 'United States');
+    await goto('custom-order.html');
+    assert.equal(await page.locator('#customName').inputValue(), 'Sara Customer');
+    assert.equal(await page.locator('#customPhone').inputValue(), '+92 311 7654321');
+    await page.locator('#customName').fill('Custom Name');
+    await page.evaluate(() => customerAuth.populateProfileFields({ name: 'customName', email: 'customEmail', phone: 'customPhone' }));
+    assert.equal(await page.locator('#customName').inputValue(), 'Custom Name');
+    assert.deepEqual(await page.evaluate(() => Object.fromEntries(['shah_cart','shah_orders','shah_wishlist','shah_saved_addresses','shah_custom_order_requests'].map(key => [key,localStorage.getItem(key)]))), localData);
+    console.log('PASS: profile contact prefill, typed-value preservation, unrelated local datasets untouched');
+    await goto('profile.html'); await settings();
+    await page.evaluate(async () => { fixture.mode = 'profile'; await customerAuth.refreshCurrentProfile(); });
+    assert.equal(await page.locator('#navUserBadge').textContent(), 'P');
+    await page.locator('[data-section=orders]').click(); await page.locator('[data-section=settings]').click();
+    await page.locator('#retryProfileLoad').waitFor();
+    await page.evaluate(() => fixture.mode = ''); await page.locator('#retryProfileLoad').click();
+    await page.locator('#settingsName').waitFor();
+    await page.evaluate(async () => { localStorage.removeItem('test-profile'); await customerAuth.refreshCurrentProfile(); });
+    assert.equal(await page.evaluate(() => customerAuth.getCurrentProfile().id), '11111111-1111-4111-8111-111111111111');
+    const payload = await page.evaluate(async () => { await customerAuth.updateProfile({ id: 'other-user', name: 'Self Customer', email: customerAuth.getCurrentUser().email, phone: '' }); return fixture.profileWrites.at(-1); });
+    assert.equal(payload.ownerId, '11111111-1111-4111-8111-111111111111');
+    assert.deepEqual(Object.keys(payload.payload).sort(), ['full_name','phone']);
+    await page.evaluate(async () => {
+      const row = JSON.parse(localStorage.getItem('test-profile')); row.full_name = '<img src=x onerror="window.injected=true">';
+      localStorage.setItem('test-profile', JSON.stringify(row)); await customerAuth.refreshCurrentProfile();
+    });
+    await page.locator('[data-section=orders]').click(); await settings();
+    assert.equal(await page.locator('#accountSectionContent img').count(), 0);
+    assert.equal(await page.evaluate(() => window.injected), undefined);
+    const delayed = await context.newPage();
+    delayed.on('pageerror', error => errors.push(error.message));
+    await delayed.addInitScript(() => { window.testProfileDelay = 1200; });
+    await delayed.goto(base + '/profile.html');
+    assert.equal(await delayed.locator('#profileLoading').isVisible(), true);
+    assert.equal(await delayed.locator('#profilePage').isVisible(), false);
+    await delayed.locator('#profilePage.visible').waitFor();
+    await delayed.goto(base + '/custom-order.html');
+    await delayed.locator('#customName').fill('Typed While Loading');
+    await delayed.evaluate(() => customerAuth.ready);
+    assert.equal(await delayed.locator('#customName').inputValue(), 'Typed While Loading');
+    await delayed.close();
+    await page.locator('#profileLogoutBtn').click(); await page.waitForURL('**/index.html?login=1');
+    await goto('profile.html'); await page.waitForURL('**/index.html?login=1');
+    console.log('PASS: email-initial fallback, retry/self-healing, ignored arbitrary ID, safe rendering and protected logout');
+    assert.deepEqual(errors, []);
+  } finally { await browser?.close(); server.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -168,10 +168,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (user) {
       accountBtn.classList.add('is-logged-in');
-      const initial = getFirstName(user.name).charAt(0).toUpperCase();
+      const initial = getFirstName(user.name || user.email).charAt(0).toUpperCase();
       badge.textContent = initial;
       badge.style.display = 'flex';
-      accountBtn.setAttribute('aria-label', `My Account, logged in as ${user.name}`);
+      accountBtn.setAttribute('aria-label', `My Account, logged in as ${user.name || user.email}`);
     } else {
       accountBtn.classList.remove('is-logged-in');
       badge.textContent = 'A';
@@ -249,6 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const applyDefaultAddressToCheckout = () => {
+    auth.populateProfileFields({ name: 'checkoutName', email: 'checkoutEmail', phone: 'checkoutPhone' });
     const user = getCurrentUser();
     const defaultAddress = getDefaultAddress();
     if (!defaultAddress || !user) return;
@@ -684,6 +685,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   let checkoutAuthIntent = false;
 
   const checkoutFieldIds = ['checkoutName', 'checkoutEmail', 'checkoutPhone', 'checkoutAddress', 'checkoutCity', 'checkoutPostal', 'checkoutCountry'];
+  checkoutFieldIds.forEach(id => {
+    const field = document.getElementById(id);
+    ['input', 'change'].forEach(type => field?.addEventListener(type, event => {
+      if (event.isTrusted) field.dataset.checkoutEdited = 'true';
+    }));
+  });
 
   const saveCheckoutFormForAuthentication = () => {
     const formData = {};
@@ -709,7 +716,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!savedData || typeof savedData !== 'object') return;
     checkoutFieldIds.forEach(id => {
       const field = document.getElementById(id);
-      if (field && Object.prototype.hasOwnProperty.call(savedData, id)) field.value = savedData[id];
+      if (field && field.dataset.checkoutEdited !== 'true' && (!field.value.trim() || field.tagName === 'SELECT')
+        && Object.prototype.hasOwnProperty.call(savedData, id)) field.value = savedData[id];
     });
     try { localStorage.removeItem(STORAGE_KEYS.pendingCheckoutFormData); } catch (e) { /* Storage may be unavailable. */ }
   };
@@ -855,7 +863,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (value.length < 10) return 'Please enter at least 10 characters.';
       if (value.length > 500) return 'Please keep this message within 500 characters.';
     }
-    if (id === 'settingsNewPassword' && !value) return '';
+    if (id === 'settingsCurrentPassword' && !value && (form.querySelector('#settingsNewPassword')?.value || form.querySelector('#settingsConfirmPassword')?.value)) return 'Current password is required.';
+    if (id === 'settingsNewPassword' && !value) return form.querySelector('#settingsCurrentPassword')?.value || form.querySelector('#settingsConfirmPassword')?.value ? 'New password is required.' : '';
     if (id === 'signupPassword' || id === 'settingsNewPassword') {
       if (value.length < 8) return 'Password must be at least 8 characters.';
       if (!/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/\d/.test(value)) return 'Use at least one uppercase letter, one lowercase letter, and one number.';
@@ -931,7 +940,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return !message;
   };
 
-  const formFields = form => [...form.querySelectorAll('.form-input, .form-textarea, .form-select, .newsletter-input')].filter(requiredField);
+  const formFields = form => [...form.querySelectorAll('.form-input, .form-textarea, .form-select, .newsletter-input')]
+    .filter(field => requiredField(field) || form.id === 'accountSettingsForm');
   const formIsValid = form => formFields(form).every(field => !validationMessage(field, form));
   const updateSubmitState = form => {
     const submit = form.querySelector('[type="submit"]');
@@ -1347,6 +1357,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const renderSettingsSection = () => {
     const user = getCurrentUser();
     if (!user) return '<div class="account-section active"></div>';
+    if (!auth.getCurrentProfile()) return `<div class="account-section active">
+      <p role="status">Your account details could not load. Check your connection and try again.</p>
+      <button type="button" class="btn btn-outline-gold" id="retryProfileLoad">Try Again</button>
+    </div>`;
 
     return `
       <div class="account-section active">
@@ -1488,6 +1502,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const bindProfileEvents = () => {
+    document.getElementById('retryProfileLoad')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = 'Loading...';
+      await auth.refreshCurrentProfile();
+      renderProfileSection('settings');
+      if (auth.profileUnavailable()) showToast('Your account details could not load. Please try again.', 'error');
+    });
     document.querySelectorAll('.order-expand-btn').forEach(button => {
       button.addEventListener('click', () => {
         const index = button.dataset.orderIndex;
@@ -1621,17 +1643,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (settingsForm.dataset.busy === 'true') return;
         settingsForm.dataset.busy = 'true';
+        settingsForm.setAttribute('aria-busy', 'true');
         const button = settingsForm.querySelector('[type="submit"]');
         button.disabled = true;
         button.textContent = 'Saving...';
         try {
           const result = await auth.updateProfile({ name: nextName, email: nextEmail, phone, currentPassword, password: newPassword });
           renderAccountBadge();
-          renderProfileSection('settings');
+          // Update the saved values without replacing the form or losing focus.
+          const saved = getCurrentUser();
+          document.getElementById('settingsName').value = saved.name;
+          document.getElementById('settingsEmail').value = saved.email;
+          document.getElementById('settingsPhone').value = saved.phone;
+          settingsForm.querySelectorAll('[type="password"]').forEach(field => { field.value = ''; updatePasswordMeter(field); });
           showToast(result);
         } catch (error) { showToast(auth.message(error), 'error'); }
         finally {
           settingsForm.dataset.busy = 'false';
+          settingsForm.removeAttribute('aria-busy');
           button.textContent = 'Save Changes';
           updateSubmitState(settingsForm);
         }
@@ -2507,6 +2536,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousCustomerId = getCurrentUser()?.id;
   window.addEventListener('customer-auth-change', () => {
     renderAccountBadge();
+    if (profileWelcomeHeading && getCurrentUser()) {
+      profileWelcomeHeading.textContent = `Welcome back, ${getFirstName(getCurrentUser().name)}`;
+    }
     const nextId = getCurrentUser()?.id;
     if (nextId !== previousCustomerId) {
       document.querySelectorAll('.wishlist-toggle-btn').forEach(button => button.remove());
@@ -2538,6 +2570,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (profilePage) {
+      document.getElementById('profileLoading')?.remove();
       profilePage.classList.add('visible');
     }
     const initialProfileSection = window.location.hash === '#custom-orders' ? 'custom-orders' : 'orders';
@@ -2559,8 +2592,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     document.getElementById('checkoutPage').hidden = false;
-    applyDefaultAddressToCheckout();
     restorePendingCheckoutFormData();
+    applyDefaultAddressToCheckout();
     showDynamicSkeleton(document.getElementById('checkoutSummaryItems'), checkoutSkeleton());
     finishDynamicSkeleton(document.getElementById('checkoutSummaryItems'), renderCheckoutSummarySidebar);
   }

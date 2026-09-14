@@ -8,7 +8,7 @@ try { playwright = require('playwright'); }
 catch { playwright = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/HP/.agents/skills/gstack/node_modules/playwright'); }
 const root = path.resolve(__dirname, '..');
 function mockClient() {
-  const fixture = window.fixture = { mode: '', logins: 0, signups: 0, listeners: 0 };
+  const fixture = window.fixture = { mode: '', logins: 0, signups: 0, listeners: 0, profileReads: 0, profileWrites: [] };
   let listener;
   const user = () => JSON.parse(localStorage.getItem('test-session') || 'null');
   const account = email => ({ id: '11111111-1111-4111-8111-111111111111', email, created_at: '2026-09-14', user_metadata: { full_name: 'Test Customer' } });
@@ -41,27 +41,38 @@ function mockClient() {
     },
     async signOut() { localStorage.removeItem('test-session'); listener('SIGNED_OUT', null); return {}; },
     async updateUser(attrs) {
+      if (fixture.mode === 'auth-save') return { error: { code: 'unexpected_failure' } };
+      if (attrs.password) fixture.passwordChanged = true;
       const value = user(); if (attrs.data) value.user_metadata = attrs.data;
-      if (attrs.email) value.email = attrs.email;
+      if (attrs.email) {
+        if (fixture.mode === 'email-pending') value.new_email = attrs.email;
+        else value.email = attrs.email;
+      }
       localStorage.setItem('test-session', JSON.stringify(value)); listener('USER_UPDATED', { user: value }); return { data: { user: value } };
     }
   };
   window.supabaseClient = { auth, from(table) {
-    let payload, action = 'read';
+    let payload, action = 'read', ownerId;
     const query = {
-      select() { return this; }, eq() { return this; }, single() { return this; }, maybeSingle() { return this; },
+      select() { return this; }, eq(key, value) { if (key === 'id') ownerId = value; return this; }, single() { return this; }, maybeSingle() { return this; },
       order() { return this; }, limit() { return this; }, range() { return this; }, not() { return this; },
       upsert(row) { payload = row; action = 'write'; return this; }, update(row) { payload = row; action = 'write'; return this; },
-      then(resolve, reject) { return Promise.resolve().then(() => {
+      then(resolve, reject) { return Promise.resolve().then(async () => {
         if (table !== 'profiles') return { data: [], count: 0 };
+        if (action === 'read') { fixture.profileReads++; if (window.testProfileDelay) await new Promise(resolve => setTimeout(resolve, window.testProfileDelay)); }
         if (fixture.mode === 'profile') return { error: { code: '42501' } };
-        if (action === 'write') localStorage.setItem('test-profile', JSON.stringify({ ...JSON.parse(localStorage.getItem('test-profile') || '{}'), ...payload }));
+        if (action === 'write') {
+          fixture.profileWrites.push({ ownerId: ownerId || payload.id, payload });
+          if (fixture.mode === 'profile-write') return { error: { code: '42501' } };
+          if (window.testSaveDelay) await new Promise(resolve => setTimeout(resolve, window.testSaveDelay));
+          localStorage.setItem('test-profile', JSON.stringify({ ...JSON.parse(localStorage.getItem('test-profile') || '{}'), ...payload, updated_at: new Date().toISOString() }));
+        }
         return { data: JSON.parse(localStorage.getItem('test-profile') || 'null') };
       }).then(resolve, reject); }
     }; return query;
   } };
 }
-(async () => {
+async function runCustomerAuthTests() {
   const server = http.createServer((req, res) => {
     const pathname = decodeURIComponent(req.url.split('?')[0]);
     const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
@@ -184,7 +195,7 @@ function mockClient() {
     await page.locator('#signupPassword').fill('StrongPass1'); await page.locator('#signupConfirmPassword').fill('StrongPass1');
     await page.locator('#signupForm [type=submit]').click(); await page.waitForURL('**/profile.html');
     assert.equal(await page.evaluate(() => customerAuth.getCurrentUser().email), 'new@example.com');
-    await page.evaluate(async () => { fixture.mode = 'profile'; await customerAuth.refresh(); });
+    await page.evaluate(async () => { fixture.mode = 'profile'; await customerAuth.refreshCurrentProfile(); });
     assert.equal(await page.evaluate(() => customerAuth.profileUnavailable()), true);
     assert.ok(await page.evaluate(() => customerAuth.getCurrentUser()));
     await page.evaluate(async () => { fixture.mode = 'expired'; await customerAuth.refresh(); });
@@ -248,4 +259,6 @@ function mockClient() {
     console.log('PASS: unavailable authentication service leaves a recoverable guest UI');
     assert.deepEqual(errors, []); console.log('PASS: no JavaScript runtime errors');
   } finally { await browser?.close(); server.close(); }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+}
+module.exports = { mockClient };
+if (require.main === module) runCustomerAuthTests().catch(error => { console.error(error); process.exitCode = 1; });
