@@ -15,6 +15,7 @@ Welcome to the official repository for **Shah Embroidery & Art**. This document 
 - **Brand Vision:** Combining traditional needlework heritage with contemporary artistic elegance. Specializing in handmade floral embroidery, custom bridal hoops, Islamic calligraphic threadwork, and personalized portrait embroidery.
 - **Site Purpose:** High-end business and service website showcasing past works, accepting custom order requests, providing itemized artwork exploration, and executing a complete front-end e-commerce shopping cart & multi-step checkout workflow.
 - **Tech Stack:**
+  - **Customer backend (Phase 1):** Supabase Auth and basic customer profiles linked to `auth.users.id`; commerce datasets remain browser-local.
   - **Core:** HTML5, Modular Vanilla CSS3, Vanilla JavaScript (ES6+)
   - **Typography & Icons:** Google Fonts (`Cormorant Garamond` & `Plus Jakarta Sans`), Font Awesome 6 Free
   - **Tooling & Build System:** Google Antigravity Agentic IDE
@@ -153,12 +154,15 @@ Shah Embroidery/
 └── js/
     ├── script.js                        # Master JavaScript bundle handling shared site interactivity
     ├── supabase-client.js               # Shared Supabase client configuration & initialization
+    ├── auth.js                          # Customer Auth state, profiles, account updates and errors
     ├── product-loader.js                # Shared product card renderer & Supabase catalog loader
     ├── shop.js                          # Shop queries, URL state, skeleton loading & pagination controls
     └── custom-order.js                  # Standalone custom order form and upload preview flow
 ```
 
 ---
+
+Additional migration files: `supabase/customer-auth.sql` supplies the customer table/RLS setup; `tests/customer-auth-browser.cjs` runs isolated customer authentication and responsive regressions.
 
 ## 4. Page-by-Page / Section-by-Section Functionality
 
@@ -167,6 +171,7 @@ Shah Embroidery/
 - **Behavior:** Static top bar with gold bullet dividers.
 
 ### 2. Navbar & Mobile Navigation Drawer
+- **Account state:** The existing guest icon/avatar uses the verified Supabase session. One shared customer auth listener updates it; profile and checkout wait for validation before granting access.
 - **Description:** Sticky navigation header (`.navbar`) containing the brand logo, desktop link menu, expanding search trigger, cart bag icon with live badge, and mobile hamburger button.
 - **Interactive Behavior:**
   - On scroll past `40px`, `.scrolled` class is added, attaching a soft shadow and subtle background blur.
@@ -288,6 +293,8 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 ## 5. Functionality & Feature List
 
+- [x] **Supabase Customer Authentication (Phase 1):** Real signup/login, persistent SDK sessions, validated users, own-row profiles, verification feedback, account updates, and checkout continuity. Requires the documented SQL/dashboard setup.
+
 - [x] **Shopping Cart Persistence:** Cart state saved automatically in `localStorage` under `shah_cart`.
 - [x] **Dynamic Quantity Steppers:** Increment, decrement, or remove items with automatic subtotal updates.
 - [x] **Cart Badge Counter:** Real-time badge counter on navbar with bounce animation on item updates.
@@ -315,9 +322,9 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 > [!WARNING]
 > **CURRENT FRONT-END SCOPE & GAPS**
-> 1. **Partial Database Integration:** Supabase powers Featured products. Gallery items remain in HTML, while accounts, carts, and orders still use browser `localStorage`.
+> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, and basic profiles. Cart, wishlist, orders, saved addresses, and custom requests remain browser-local and require future database migration. Local records are editable by the browser user and are not server-verified orders or authorization evidence.
 > 2. **Simulated Payment Gateway:** The *Pay Online (Credit / Debit Card)* option is currently a mock UI placeholder. Real transaction processing via gateways (e.g., JazzCash, Easypaisa, PayFast, Stripe) is not yet integrated.
-> 3. **No Live Email Dispatch:** The email receipt notification notice on the confirmation modal is a client-side simulation. No automated transactional emails (SMTP / SendGrid) are sent.
+> 3. **No Order Email Dispatch:** The receipt notification remains a simulation. Supabase Auth confirmation emails are separate and depend on dashboard/email-provider configuration.
 > 4. **Manual Bank Verification:** Direct Bank Transfer requires manual verification by having the user send their payment screenshot via WhatsApp.
 > 5. **Inventory Limits:** Featured products are filtered by Supabase `in_stock`; checkout does not reserve or decrement stock.
 > 6. **Reference Image Storage:** Custom-order reference files are previewed locally and only their filenames are stored. Persistent file uploads require backend storage.
@@ -331,17 +338,20 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 ## 7. User Accounts, Login / Signup & Profile System
 
-### Mock Auth Flow
-- **Navigation access:** A circular account button sits beside the cart icon in the main navbar. When no user is active, it opens the login/signup modal. When a user is logged in, it changes to a first-letter avatar badge and opens the profile page instead.
-- **Form UX:** The modal initially presents the login form, with a toggle to switch to the signup form without showing both states simultaneously. Inline validation covers required fields, email format, and password confirmation matching.
-- **Storage model:** User records are stored in `localStorage` under `shah_users` and the active session is stored under `shah_current_user`. Passwords are never saved in plain text in the frontend; the mock system hashes them client-side only for demo behavior, and the comment in the code documents that real server-side hashing and authentication must be implemented once the PHP/MySQL backend exists.
-- **Session behavior:** Logging out clears the current session only. The saved wishlist, order history, and addresses remain in `localStorage` so the next login restores the same account data.
+### Supabase Customer Auth Flow
+- **Identity:** `js/auth.js` is the single customer auth source. It uses `getSession()` followed by server-validated `getUser()`, with one `onAuthStateChange()` listener. Protected access waits for validation; session loss removes access. SDK persistence restores sessions on refresh/reopen; visibility and restored-history events revalidate them. Network validation failures fail closed.
+- **Signup:** The existing fields, modal design, and validation remain. Names/emails are trimmed, emails lowercased, and passwords sent unchanged exclusively to Auth. Buttons show loading and prevent repeated submissions. Friendly inline live-region messages cover credentials, network errors, verification, and service failures. Duplicate-email responses remain generic.
+- **Email confirmation:** With confirmation enabled, signup without a session shows an inbox/verification message and retains checkout intent. It grants no avatar or protected access. The email link returns to checkout or profile using an allowlisted URL. With confirmation disabled, a returned session proceeds immediately. Existing demo accounts must register again; old hashes are never imported.
+- **Profiles:** After the first validated session, fetch the caller's `public.profiles` row and insert missing details using own-row RLS. Signup metadata carries the name until then. No `auth.users` signup trigger is installed: a profile outage cannot roll back registration. Profile failures show a refresh/retry notice; validated identity stays usable and missing profiles are retried on subsequent validation. Confirmation-enabled signup creates the profile only once verification establishes a session.
+- **Navigation:** The existing guest icon, first-letter avatar, and default profile destination remain. Checkout intent takes priority and returns to `checkout.html` with unchanged cart and saved shipping fields. Closing the modal no longer erases pending checkout data. Redirect destinations are fixed local pages.
+- **Logout:** Uses `supabase.auth.signOut()` and preserves all local commerce data. Customer and admin pages share the existing SDK session, so signing out also ends that shared login. Admin privileges still require owner UUID validation and RLS.
+- **Legacy storage:** Application code neither reads nor writes `shah_users` or `shah_current_user` for identity. Existing keys remain inert and may be manually removed without removing commerce data. Application code no longer hashes or stores passwords.
 
 ### Profile Page Structure
 - **Five sections:** Order History, Custom Order Tracking, Wishlist, Saved Addresses, and Account Settings.
 - **Section switching:** All tabs are JavaScript-driven and keep a single active section visible without page reloads.
 - **Responsive pattern:** On desktop the page uses a left sidebar; below `768px` the tabs become a scrollable horizontal row.
-- **Account management:** Users can update their name, email, phone, and password in the mock settings form and receive a success toast without reloading the page.
+- **Account management:** Name/phone are saved to profiles; email/password changes use Auth. Password changes reauthenticate with the current password. Email changes retain the current address until confirmation where configured, and profile email mirrors validated Auth email on subsequent load. The existing settings form/toast remains. Details may already be saved if a later Auth update fails; retry the remaining change.
 - **Order cancellation:** Orders with `Processing` status expose a `Cancel Order` action. The action opens a custom modal confirmation with `Go Back` and `Confirm Cancellation` controls. Confirmed cancellation is stored under `shah_orders`, immediately changes the status to `Cancelled`, hides the action, and shows a success toast.
 
 ### Standalone Commerce Pages
@@ -354,7 +364,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 All forms validate fields on blur first, then validate on each keystroke after an error is shown. Invalid fields receive a red border and specific inline guidance; corrected fields receive a muted green valid state. Submit buttons remain muted until required fields are valid, and submit attempts recheck every field and focus the first invalid field.
 
 - **Names:** Required where used, at least 2 characters, and limited to letters, spaces, hyphens, and apostrophes.
-- **Email:** Required where used and checked against a complete `name@domain.tld` pattern; values are trimmed and compared case-insensitively. Signup also rejects registered email addresses.
+- **Email:** Required where used and checked against a complete `name@domain.tld` pattern; values are trimmed and compared case-insensitively. Signup delegates registration checks to Auth and uses generic responses instead of exposing account existence.
 - **Passwords:** Signup and password changes require at least 8 characters, one uppercase letter, one lowercase letter, and one number. Live Weak/Medium/Strong strength meters and exact confirmation matching are provided.
 - **Phone:** Accepts common spaces, dashes, parentheses, and a leading plus sign, with 10 to 15 underlying digits.
 - **Addresses:** Street addresses require at least 5 characters, cities at least 2 characters, and postal codes require 5 digits for Pakistan or 4 to 6 digits internationally.
@@ -362,6 +372,9 @@ All forms validate fields on blur first, then validate on each keystroke after a
 - **Newsletter:** Requires a valid email address with the same inline feedback and disabled-submit behavior.
 
 ### Stored Data Notes
+- **Supabase:** Auth owns credentials/sessions; `public.profiles.id` references `auth.users.id`, the canonical customer UUID. Profile values are escaped/text-rendered. The SDK may persist its own tokens in browser storage; these are unrelated to the removed mock session.
+- **Compatibility:** `shah_customer_data_keys` maps validated UUIDs to their first local email bucket on this browser, preserving wishlist/address/custom-request access across email changes. This map never authenticates anyone. New local orders/custom requests also record `customerId`; old orders match the original email bucket. These records remain device-local.
+- **Cart:** `shah_cart` remains guest-accessible and unchanged by authentication.
 - **Orders:** Order records are stored under `shah_orders` and linked to the active user’s email when available.
 - **Custom requests:** Custom order inquiries are stored under `shah_custom_order_requests` keyed by user email.
 - **Wishlist:** Each email key stores an array of wishlist items in `shah_wishlist`.
@@ -422,9 +435,9 @@ All favicon assets are generated from `Images/Logo.png` (699×699 px) using the 
 
 1. **Payment Gateway Integration:**
    - Integrate local Pakistani payment gateways (JazzCash, Easypaisa, PayFast) and international credit card processors (Stripe / PayPal API).
-2. **Backend & Database Migration (PHP / MySQL via XAMPP):**
-   - Create dynamic MySQL tables for `products`, `categories`, `orders`, `order_items`, and `customers`.
-   - Build a PHP REST API to handle cart verification, order submission, and payment webhooks.
+2. **Customer Backend Migration (following Phase 1):**
+   - Customer Auth and basic profiles are implemented with Supabase. Next migrate wishlist, orders/order_items, addresses, and custom requests using `auth.users.id`.
+   - Add server-side cart/inventory verification, order submission, reference uploads, and payment webhooks.
 3. **Admin Dashboard Extensions:**
    - Product management is implemented in the unlisted Supabase admin pages. Future work: custom order inquiries and fulfillment status management (*Pending, Processing, Shipped, Completed*).
 4. **Transactional Email Service:**
@@ -438,16 +451,30 @@ All favicon assets are generated from `Images/Logo.png` (699×699 px) using the 
 
 The `products` table powers the Latest Work section on `index.html`. `js/product-loader.js` fetches up to six rows with `in_stock=true`, newest first. The legacy `is_featured` column remains in Supabase for compatibility but is not used by the homepage, shop, or admin UI.
 
-Credentials live in `js/supabase-client.js`; real values must not be committed to any public repository.
+The project URL and public anon key in `js/supabase-client.js` are intentionally browser-visible. Never commit service-role keys, passwords, or privileged credentials.
+
+### Customer profiles and manual setup
+
+1. In the project's **Supabase SQL Editor**, run `supabase/customer-auth.sql`. Creating this file does not apply it remotely. It creates `public.profiles` (UUID FK to Auth, full_name, email, phone, created_at, updated_at), enables RLS, grants authenticated SELECT/INSERT/UPDATE, and installs own-row policies plus a restrictive own-row guard. Anonymous access and customer DELETE are not granted. A profile-table trigger maintains timestamps and copies email from Auth; it does not run during signup or change product/admin policies.
+2. Verify the existing `supabase/admin-security.sql` owner-only guards and `supabase/admin-storage-cleanup.sql` permissions are already applied. The original admin-security script is not idempotent: inspect existing policies before rerunning it. Verify a normal customer cannot write products or upload/delete product images before enabling public signup.
+3. In **Authentication**, enable email/password and **Allow new users to sign up**. Keep anonymous sign-ins disabled. **Confirm email** is recommended enabled; both modes are supported. Configure Auth email delivery/SMTP for customer use and retain secure email-change confirmation.
+4. In **Authentication > URL Configuration**, set Site URL to the deployed site origin and add exact redirects: `https://shah-embroidery.netlify.app/profile.html` and `https://shah-embroidery.netlify.app/checkout.html`. Add equivalent URLs for your actual domain and local test origin/port. Email templates must preserve the confirmation URL. A verification link on a different device cannot transfer browser-local carts.
+5. After setup, use two real non-owner test accounts to verify each can SELECT/INSERT/UPDATE only its own profile. With A's JWT, querying B's ID must return no rows, updating B must change no rows, and inserting B must fail. Anonymous reads must return no records. Verify real confirmation links, refresh/reopen, email/password changes, and logout, plus owner login/add/edit/logout and non-owner denial. Remove only your test fixtures afterward.
+
+### Customer authentication verification
+
+Run `node tests/customer-auth-browser.cjs` and the unchanged `node tests/admin-browser.cjs` (Chrome/Playwright; optional `PLAYWRIGHT_MODULE` path). Customer tests mock the SDK boundary and make no remote writes. They cover signup/session variants, validation/errors, profile failures, forged mock sessions, checkout cart/form preservation, refresh/reopen, logout, settings, and modal geometry at 1440/1024/900/768/480/393/360px plus a shortened mobile viewport. These are not proof of live RLS, SMTP delivery, physical mobile keyboard behavior, or dashboard configuration. Live customer and two-account RLS verification remains required after manual setup. The admin browser regression suite passed unchanged; this task did not perform new live admin mutations.
+
+Validation on 2026-09-14: customer, admin, shop, and gallery browser suites passed with no JavaScript runtime errors. Customer checks also covered repeated-submit protection, keyboard focus wrapping, the mobile drawer, and the real shared-client bootstrap with the SDK unavailable. Desktop/mobile signup screenshots were visually inspected. JavaScript syntax checks passed. SQL has been reviewed in the repository but has not been applied or tested against the live database.
 
 ## Admin Dashboard
 
 - `admin-login.html` and `admin.html` are unlisted pages accessed directly by URL, never linked in public navigation. Layout lives in `css/admin.css`; behavior is isolated in `js/admin.js`.
-- Uses real Supabase email/password Auth and the existing shared client, separate from customer mock login. No signup form exists. The dashboard stays hidden until the session and server-validated owner identity pass. `js/admin-config.js` holds only the owner's public Auth UUID.
+- Uses real Supabase email/password Auth and the shared SDK session, with independent owner-only authorization. Customer Supabase users do not automatically receive admin authorization. No admin signup form exists. The dashboard stays hidden until the session and server-validated owner identity pass. `js/admin-config.js` holds only the owner's public Auth UUID.
 - Supports adding, editing, cancelling edits, and confirmation-protected deletion. All products, including out-of-stock rows, are accessible in a compact table with 25 rows per page. New in-stock products appear in Latest Work on the homepage's next load.
 - Images upload to the public `product-images` Storage bucket under unique owner-scoped paths. JPG/PNG/WebP extension, MIME type, file signature, and a 5 MB maximum are checked before upload. Editing without a new image retains its URL. Failed saves retain data and reuse completed uploads on retry.
 - Apply `supabase/admin-security.sql` once in the Supabase SQL Editor. It adds owner-only restrictive write policies alongside existing product policies, a Storage upload policy, and bucket file limits. Public product SELECT remains unchanged. **The SQL is supplied for setup; creating this file does not apply it to Supabase.** Existing authenticated-only policies do not enforce owner-only API access.
-- Disable **Allow new users to sign up** in Supabase Auth settings (and anonymous sign-ins if enabled). Existing owner login continues to work. Never put passwords or service-role keys in frontend files or this README.
+- Customer registration requires **Allow new users to sign up** enabled after verifying owner-only product/Storage RLS guards are applied. Keep anonymous sign-ins disabled. Owner UUID validation remains unchanged. Never put passwords or service-role keys in frontend files or this README.
 - After a successful product row deletion, the dashboard removes its associated image from this project's `product-images` Storage bucket. Empty, malformed, external, or other-project URLs are skipped. Storage errors are logged to the console without changing the successful product deletion or toast. Add/Edit flows are unchanged; replaced or abandoned uploads and failed cleanup may still require manual review.
 - Apply `supabase/admin-storage-cleanup.sql` in the Supabase SQL Editor to grant the owner Storage SELECT and DELETE permissions. Existing restrictive guards remain in force. This supplement is safe to rerun and does not change product or public-read policies.
 - Client checks control page visibility; Supabase RLS enforces data authorization. Keep catalog data trusted and protect the shared site origin against XSS.
@@ -456,6 +483,12 @@ Credentials live in `js/supabase-client.js`; real values must not be committed t
 - Validation on 2026-09-14: admin browser regression passed with no Is Featured form control. The live homepage request was `in_stock=eq.true&order=created_at.desc&limit=6`, contained no `is_featured` filter, rendered without runtime errors, and returned the current newest in-stock catalog result.
 
 ## 11. Change Log
+
+### [2026-09-14] - Customer Supabase Authentication, Phase 1
+- Replaced mock customer signup/login/session and settings password hashing with shared Supabase Auth and own-row customer profiles. Added SQL setup, lazy profile recovery, generic errors, duplicate-submit prevention, and verification-aware redirects.
+- Hardened shared client initialization and the homepage product loader for an unavailable SDK, keeping customer error feedback and guest navigation operational.
+- Preserved guest cart/checkout intent, shipping restoration, local profile datasets, and independent owner-only admin authorization. Added accessible auth status/focus handling and dynamic viewport sizing without redesigning the modal.
+- Added customer browser regressions and documented manual SQL/Auth URL/email configuration, security boundaries, remaining migrations, and live verification requirements.
 
 ### [2026-09-14] - PKR Price Display
 - Updated product cards, Gallery, admin tables, cart, checkout, and order confirmation to display numeric prices as `Rs. X,XXX`. Stored numeric values remain unchanged, and historical order totals retain their original stored formatting.

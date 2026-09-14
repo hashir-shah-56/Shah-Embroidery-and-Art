@@ -1,4 +1,5 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await window.customerAuth.ready;
   const form = document.getElementById('customOrderPageForm');
   if (!form) return;
 
@@ -17,9 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const success = document.getElementById('customOrderSuccess');
   let selectedFiles = [];
 
-  const getCurrentUser = () => {
-    try { return JSON.parse(localStorage.getItem('shah_current_user')) || null; } catch { return null; }
-  };
+  const getCurrentUser = () => window.customerAuth.getCurrentUser();
 
   const updateSubmitState = () => {
     const hasType = typeInputs.some(input => input.checked);
@@ -37,10 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user) {
     nameInput.value = user.name || '';
     emailInput.value = user.email || '';
-    try {
-      const users = JSON.parse(localStorage.getItem('shah_users')) || [];
-      phoneInput.value = users.find(item => item.email.toLowerCase() === user.email.toLowerCase())?.phone || '';
-    } catch { phoneInput.value = ''; }
+    phoneInput.value = user.phone || '';
     [nameInput, emailInput, phoneInput].forEach(field => field.dispatchEvent(new Event('input', { bubbles: true })));
   }
 
@@ -85,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (submitButton.disabled) return;
 
     const request = {
+      customerId: getCurrentUser()?.id || null,
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       summary: `${form.querySelector('input[name="customOrderType"]:checked').value} request: ${document.getElementById('customDetails').value.trim()}`,
       details: document.getElementById('customDetails').value.trim(),
@@ -105,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Files are previewed in the browser only; backend storage is required for persistence.
     const requests = (() => { try { return JSON.parse(localStorage.getItem('shah_custom_order_requests')) || {}; } catch { return {}; } })();
     const user = getCurrentUser();
-    const key = user ? user.email.toLowerCase() : 'guest';
+    const key = user ? user.localDataKey : 'guest';
     requests[key] = [...(requests[key] || []), request];
     let saved = false;
     try {

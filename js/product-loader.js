@@ -80,6 +80,10 @@ if (typeof window !== 'undefined') {
 async function loadLatestProducts() {
   const container = document.querySelector('#featuredGrid');
   if (!container) return;
+  if (!supabaseClient) {
+    container.innerHTML = '<p>Artwork could not load. Please refresh and try again.</p>';
+    return;
+  }
 
   const { data, error } = await supabaseClient
     .from('products')

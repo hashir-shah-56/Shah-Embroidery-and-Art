@@ -10,12 +10,10 @@ if (isHomepageTopNavigation) {
   window.addEventListener('pageshow', () => window.scrollTo(0, 0));
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const STORAGE_KEYS = {
     cart: 'shah_cart',
     lastOrder: 'shah_last_order',
-    users: 'shah_users',
-    currentUser: 'shah_current_user',
     wishlist: 'shah_wishlist',
     customOrderRequests: 'shah_custom_order_requests',
     addresses: 'shah_saved_addresses',
@@ -143,7 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.appendChild(toast);
     }
     toast.className = 'site-toast' + (type === 'error' ? ' site-toast-error' : '');
-    toast.innerHTML = `<span class="toast-icon" aria-hidden="true">${type === 'error' ? '&#9888;' : '&#10003;'}</span><span>${message}</span>`;
+    toast.innerHTML = `<span class="toast-icon" aria-hidden="true">${type === 'error' ? '&#9888;' : '&#10003;'}</span><span></span>`;
+    toast.lastElementChild.textContent = message;
     // Force reflow so re-shown toasts re-trigger the transition.
     void toast.offsetWidth;
     toast.classList.add('visible');
@@ -153,25 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Expose globally so inline handlers (e.g. newsletter forms) can call it.
   window.showToast = showToast;
 
-  const getCurrentUser = () => getFromStorage(STORAGE_KEYS.currentUser, null);
-
-  const setCurrentUser = (user) => {
-    if (!user) {
-      localStorage.removeItem(STORAGE_KEYS.currentUser);
-      return;
-    }
-    saveToStorage(STORAGE_KEYS.currentUser, user);
-  };
-
-  const hashPassword = (password) => {
-    return Array.from(password).reduce((hash, char) => hash + char.charCodeAt(0), 0).toString(16);
-  };
-
-  const getUserByEmail = (email) => {
-    const users = getFromStorage(STORAGE_KEYS.users, []);
-    if (!email) return null;
-    return users.find(user => user.email.toLowerCase() === email.trim().toLowerCase()) || null;
-  };
+  const auth = window.customerAuth;
+  const getCurrentUser = () => auth.getCurrentUser();
 
   const getFirstName = (name) => {
     if (!name) return 'User';
@@ -214,13 +196,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
     const orders = getFromStorage(STORAGE_KEYS.orders, []);
     if (!user) return [];
-    return orders.filter(order => order.customer && order.customer.email && order.customer.email.toLowerCase() === user.email.toLowerCase());
+    return orders.filter(order => order.customerId ? order.customerId === user.id : order.customer && order.customer.email && order.customer.email.toLowerCase() === user.localDataKey);
   };
 
   const getWishlist = () => {
     const currentUser = getCurrentUser();
     const wishlist = getFromStorage(STORAGE_KEYS.wishlist, {});
-    const wishlistKey = currentUser ? currentUser.email.toLowerCase() : 'guest';
+    const wishlistKey = currentUser ? currentUser.localDataKey : 'guest';
     return wishlist[wishlistKey] || [];
   };
 
@@ -240,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveWishlist = (items) => {
     const currentUser = getCurrentUser();
     const wishlistMap = getFromStorage(STORAGE_KEYS.wishlist, {});
-    const wishlistKey = currentUser ? currentUser.email.toLowerCase() : 'guest';
+    const wishlistKey = currentUser ? currentUser.localDataKey : 'guest';
     wishlistMap[wishlistKey] = items;
     saveToStorage(STORAGE_KEYS.wishlist, wishlistMap);
   };
@@ -249,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentUser = getCurrentUser();
     if (!currentUser) return [];
     const addresses = getFromStorage(STORAGE_KEYS.addresses, {});
-    return addresses[currentUser.email.toLowerCase()] || [];
+    return addresses[currentUser.localDataKey] || [];
   };
 
   const getDefaultAddress = () => {
@@ -262,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
     const addressMap = getFromStorage(STORAGE_KEYS.addresses, {});
-    addressMap[currentUser.email.toLowerCase()] = addresses;
+    addressMap[currentUser.localDataKey] = addresses;
     saveToStorage(STORAGE_KEYS.addresses, addressMap);
   };
 
@@ -293,14 +275,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentUser = getCurrentUser();
     if (!currentUser) return [];
     const requests = getFromStorage(STORAGE_KEYS.customOrderRequests, {});
-    return requests[currentUser.email.toLowerCase()] || [];
+    return requests[currentUser.localDataKey] || [];
   };
 
   const saveCustomRequests = (requests) => {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
     const requestMap = getFromStorage(STORAGE_KEYS.customOrderRequests, {});
-    requestMap[currentUser.email.toLowerCase()] = requests;
+    requestMap[currentUser.localDataKey] = requests;
     saveToStorage(STORAGE_KEYS.customOrderRequests, requestMap);
   };
 
@@ -743,27 +725,34 @@ document.addEventListener('DOMContentLoaded', () => {
     openProfilePage();
   };
 
+  let authReturnFocus = null;
   const openAuthModal = () => {
+    authReturnFocus = document.activeElement;
     if (accountModal) {
       accountModal.classList.add('active');
       document.body.style.overflow = 'hidden';
+      setTimeout(() => accountModal.querySelector('.auth-form-wrap:not([style*="none"]) input')?.focus(), 0);
     }
   };
 
   const closeAuthModal = () => {
-    if (!getCurrentUser()) {
-      checkoutAuthIntent = false;
-      try {
-        localStorage.removeItem(STORAGE_KEYS.loginRedirectTarget);
-        localStorage.removeItem(STORAGE_KEYS.pendingCheckoutFormData);
-      } catch (e) { /* Storage may be unavailable. */ }
-    }
     if (authContextMessage) authContextMessage.textContent = 'WELCOME';
     if (accountModal) {
       accountModal.classList.remove('active');
       document.body.style.overflow = '';
+      authReturnFocus?.focus();
     }
   };
+
+  document.addEventListener('keydown', event => {
+    if (!accountModal?.classList.contains('active')) return;
+    if (event.key === 'Escape') { closeAuthModal(); return; }
+    if (event.key !== 'Tab') return;
+    const fields = [...accountModal.querySelectorAll('button:not(:disabled), input:not(:disabled), a[href]')].filter(el => el.getClientRects().length);
+    const first = fields[0], last = fields[fields.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  });
 
   const setAuthView = (mode) => {
     authFormWraps.forEach(formWrap => {
@@ -788,7 +777,8 @@ document.addEventListener('DOMContentLoaded', () => {
     beginCheckoutAuthentication();
   };
 
-  const openProfilePage = () => {
+  const openProfilePage = async () => {
+    await auth.refresh();
     const user = getCurrentUser();
     if (!user) {
       if (isCheckoutPage) {
@@ -818,21 +808,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProfileSection('orders');
   };
 
-  const logoutUser = () => {
-    setCurrentUser(null);
-    renderAccountBadge();
-    if (profilePage) profilePage.classList.remove('visible');
-    setAuthView('login');
-    closeAuthModal();
-
-    if (isProfilePage) {
-      window.location.href = 'index.html?login=1';
-      return;
-    }
-
-    if (window.location.hash === '#profile') {
-      window.location.hash = '#home';
-    }
+  const logoutUser = async () => {
+    if (profileLogoutBtn?.disabled) return;
+    if (profileLogoutBtn) profileLogoutBtn.disabled = true;
+    try { await auth.signOut(); }
+    catch (error) { showToast(auth.message(error), 'error'); }
+    finally { if (profileLogoutBtn) profileLogoutBtn.disabled = false; }
   };
 
   const showValidationError = (fieldId, message) => {
@@ -850,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const validationMessage = (field, form) => {
-    const value = field.value.trim();
+    const value = field.type === 'password' ? field.value : field.value.trim();
     const id = field.id;
     const type = field.type;
     const nameFields = ['loginName', 'signupName', 'settingsName', 'addressName', 'customName', 'contactName'];
@@ -861,7 +842,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!value && id === 'settingsPhone') return '';
     if (nameFields.includes(id) && value && (value.length < 2 || !nameRegex.test(value))) return 'Please enter a name using letters, spaces, hyphens, or apostrophes.';
     if (emailFields.includes(id) && value && !emailRegex.test(value)) return 'Please enter a valid email address.';
-    if (id === 'signupEmail' && value && getUserByEmail(value)) return 'An account with this email already exists.';
     if (phoneFields.includes(id) && value && (!phoneRegex.test(value) || value.replace(/\D/g, '').length < 10 || value.replace(/\D/g, '').length > 15)) return 'Please enter a valid phone number with 10 to 15 digits.';
     if (['checkoutAddress', 'addressText'].includes(id) && value.length < 5) return 'Please enter at least 5 characters for the street address.';
     if (['checkoutCity', 'addressCity'].includes(id) && value.length < 2) return 'Please enter a valid city name.';
@@ -875,6 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (value.length < 10) return 'Please enter at least 10 characters.';
       if (value.length > 500) return 'Please keep this message within 500 characters.';
     }
+    if (id === 'settingsNewPassword' && !value) return '';
     if (id === 'signupPassword' || id === 'settingsNewPassword') {
       if (value.length < 8) return 'Password must be at least 8 characters.';
       if (!/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/\d/.test(value)) return 'Use at least one uppercase letter, one lowercase letter, and one number.';
@@ -954,7 +935,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const formIsValid = form => formFields(form).every(field => !validationMessage(field, form));
   const updateSubmitState = form => {
     const submit = form.querySelector('[type="submit"]');
-    if (submit) submit.disabled = !formIsValid(form);
+    if (submit) submit.disabled = form.dataset.busy === 'true' || !formIsValid(form);
   };
   const initializeFormValidation = form => {
     if (!form) return;
@@ -1013,107 +994,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }))).observe(document.body, { childList: true, subtree: true });
 
-  const handleLoginSubmit = (event) => {
+  const authStatus = document.createElement('p');
+  authStatus.setAttribute('role', 'status');
+  authStatus.setAttribute('aria-live', 'polite');
+  authStatus.className = 'auth-status';
+  accountModal?.querySelector('.auth-modal-container')?.appendChild(authStatus);
+  const runAuthSubmit = async (event, signup) => {
     event.preventDefault();
-    const email = document.getElementById('loginEmail')?.value.trim() || '';
-    const password = document.getElementById('loginPassword')?.value || '';
-
-    clearValidationErrors('loginForm');
-    let valid = true;
-
-    if (!email || !emailRegex.test(email)) {
-      valid = false;
-      showValidationError('loginEmail', 'Please enter a valid email address.');
+    const form = event.currentTarget;
+    if (form.dataset.busy === 'true' || !formIsValid(form)) return;
+    form.dataset.busy = 'true';
+    form.setAttribute('aria-busy', 'true');
+    const button = form.querySelector('[type="submit"]');
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = signup ? 'Creating account...' : 'Signing in...';
+    authStatus.textContent = '';
+    try {
+      await auth.ready;
+      if (signup) {
+        const target = getFromStorage(STORAGE_KEYS.loginRedirectTarget, null) === 'checkout.html' ? 'checkout.html' : 'profile.html';
+        const session = await auth.signUp(form.querySelector('#signupName').value, form.querySelector('#signupEmail').value,
+          form.querySelector('#signupPassword').value, new URL(target, window.location.href).href);
+        if (!session) {
+          authStatus.textContent = 'Check your inbox for a confirmation link if registration is available for this address. Verify your email before signing in. If you already have an account, try logging in.';
+          form.querySelectorAll('[type="password"]').forEach(field => { field.value = ''; });
+          return;
+        }
+      } else {
+        await auth.signIn(form.querySelector('#loginEmail').value, form.querySelector('#loginPassword').value);
+      }
+      form.querySelectorAll('[type="password"]').forEach(field => { field.value = ''; });
+      renderAccountBadge();
+      closeAuthModal();
+      finishAuthentication();
+    } catch (error) {
+      authStatus.textContent = auth.message(error, signup ? 'signup' : 'login');
+    } finally {
+      form.dataset.busy = 'false';
+      form.removeAttribute('aria-busy');
+      button.textContent = label;
+      updateSubmitState(form);
     }
-
-    if (!password) {
-      valid = false;
-      showValidationError('loginPassword', 'Password is required.');
-    }
-
-    if (!valid) return;
-
-    const existingUser = getUserByEmail(email);
-    // Generic message on purpose â€” never reveal whether the email or the
-    // password was wrong (basic account-enumeration protection).
-    if (!existingUser || existingUser.passwordHash !== hashPassword(password)) {
-      showValidationError('loginPassword', 'Incorrect email or password.');
-      return;
-    }
-
-
-    setCurrentUser({
-      id: existingUser.id,
-      name: existingUser.name,
-      email: existingUser.email,
-      joinDate: existingUser.joinDate
-    });
-    renderAccountBadge();
-    closeAuthModal();
-    finishAuthentication();
   };
-
-  const handleSignupSubmit = (event) => {
-    event.preventDefault();
-    const name = document.getElementById('signupName')?.value.trim() || '';
-    const email = document.getElementById('signupEmail')?.value.trim() || '';
-    const password = document.getElementById('signupPassword')?.value || '';
-    const confirmPassword = document.getElementById('signupConfirmPassword')?.value || '';
-
-    clearValidationErrors('signupForm');
-    let valid = true;
-
-    if (!name) {
-      valid = false;
-      showValidationError('signupName', 'Full name is required.');
-    }
-
-    if (!email || !emailRegex.test(email)) {
-      valid = false;
-      showValidationError('signupEmail', 'Please enter a valid email address.');
-    }
-
-    if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-      valid = false;
-      showValidationError('signupPassword', 'Use 8+ characters with uppercase, lowercase, and a number.');
-    }
-
-    if (!confirmPassword || confirmPassword !== password) {
-      valid = false;
-      showValidationError('signupConfirmPassword', 'Passwords do not match.');
-    }
-
-    if (!valid) return;
-
-    if (getUserByEmail(email)) {
-      showValidationError('signupEmail', 'An account with this email already exists.');
-      return;
-    }
-
-    const users = getFromStorage(STORAGE_KEYS.users, []);
-    const newUser = {
-      id: 'user_' + Date.now(),
-      name,
-      email,
-      passwordHash: hashPassword(password),
-      joinDate: new Date().toISOString(),
-      phone: ''
-    };
-
-    users.push(newUser);
-    saveToStorage(STORAGE_KEYS.users, users);
-
-    // Mock auth only; real password hashing/authentication must be server-side in production.
-    setCurrentUser({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      joinDate: newUser.joinDate
-    });
-    renderAccountBadge();
-    closeAuthModal();
-    finishAuthentication();
-  };
+  const handleLoginSubmit = event => runAuthSubmit(event, false);
+  const handleSignupSubmit = event => runAuthSubmit(event, true);
 
   const accountFields = ['loginEmail', 'loginPassword', 'signupName', 'signupEmail', 'signupPassword', 'signupConfirmPassword'];
   accountFields.forEach(fieldId => {
@@ -1444,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div class="form-group">
             <label class="form-label" for="settingsPhone">Phone (optional)</label>
-            <input type="tel" id="settingsPhone" class="form-input" value="${escapeHTML(getUserByEmail(user.email)?.phone || '')}">
+            <input type="tel" id="settingsPhone" class="form-input" value="${escapeHTML(user.phone || '')}">
           </div>
 
           <div class="form-section-group">
@@ -1655,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const settingsForm = document.getElementById('accountSettingsForm');
     if (settingsForm) {
-      settingsForm.addEventListener('submit', (event) => {
+      settingsForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const currentUser = getCurrentUser();
         if (!currentUser) return;
@@ -1677,9 +1602,7 @@ document.addEventListener('DOMContentLoaded', () => {
           valid = false;
           showValidationError('settingsEmail', 'Please enter a valid email address.');
         }
-        const userRecord = getUserByEmail(currentUser.email);
         if (newPassword || confirmPassword || currentPassword) {
-          // Real password verification belongs on the backend; this is a front-end mock only.
           if (!currentPassword) {
             valid = false;
             showValidationError('settingsCurrentPassword', 'Current password is required.');
@@ -1692,34 +1615,27 @@ document.addEventListener('DOMContentLoaded', () => {
             valid = false;
             showValidationError('settingsConfirmPassword', 'Passwords do not match.');
           }
-          if (userRecord && currentPassword && userRecord.passwordHash !== hashPassword(currentPassword)) {
-            valid = false;
-            showValidationError('settingsCurrentPassword', 'Current password does not match.');
-          }
+
         }
 
         if (!valid) return;
 
-        const users = getFromStorage(STORAGE_KEYS.users, []);
-        const existingIndex = users.findIndex(item => item.email.toLowerCase() === currentUser.email.toLowerCase());
-        if (existingIndex > -1) {
-          users[existingIndex].name = nextName;
-          users[existingIndex].email = nextEmail;
-          users[existingIndex].phone = phone;
-          if (newPassword) users[existingIndex].passwordHash = hashPassword(newPassword);
-          saveToStorage(STORAGE_KEYS.users, users);
+        if (settingsForm.dataset.busy === 'true') return;
+        settingsForm.dataset.busy = 'true';
+        const button = settingsForm.querySelector('[type="submit"]');
+        button.disabled = true;
+        button.textContent = 'Saving...';
+        try {
+          const result = await auth.updateProfile({ name: nextName, email: nextEmail, phone, currentPassword, password: newPassword });
+          renderAccountBadge();
+          renderProfileSection('settings');
+          showToast(result);
+        } catch (error) { showToast(auth.message(error), 'error'); }
+        finally {
+          settingsForm.dataset.busy = 'false';
+          button.textContent = 'Save Changes';
+          updateSubmitState(settingsForm);
         }
-
-        const updatedUser = {
-          id: currentUser.id,
-          name: nextName,
-          email: nextEmail,
-          joinDate: currentUser.joinDate
-        };
-        setCurrentUser(updatedUser);
-        renderAccountBadge();
-        renderProfileSection('settings');
-        showToast('Changes saved successfully.');
       });
     }
   };
@@ -2296,7 +2212,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnProceedToCheckout = document.getElementById('btnProceedToCheckout');
     if (btnProceedToCheckout) {
-      btnProceedToCheckout.addEventListener('click', () => {
+      btnProceedToCheckout.addEventListener('click', async () => {
+        await auth.refresh();
         if (!getCurrentUser()) {
           if (cartModal) closeCartModal();
           promptForCheckoutLogin();
@@ -2429,10 +2346,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Checkout Form Validation & Submission
   const checkoutForm = document.getElementById('checkoutForm');
   if (checkoutForm) {
-    checkoutForm.addEventListener('submit', (e) => {
+    checkoutForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (checkoutForm.dataset.busy === 'true') return;
+      checkoutForm.dataset.busy = 'true';
+      await auth.refresh();
+      checkoutForm.dataset.busy = 'false';
 
       if (!getCurrentUser()) {
+        saveCheckoutFormForAuthentication();
         window.location.href = 'cart.html?login=checkout';
         return;
       }
@@ -2506,6 +2428,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const orderData = {
+        customerId: getCurrentUser().id,
         orderId: 'SE-' + Math.floor(10000 + Math.random() * 90000),
         status: 'Processing',
         orderDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -2569,6 +2492,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  await auth.ready;
+  let previousCustomerId = getCurrentUser()?.id;
+  window.addEventListener('customer-auth-change', () => {
+    renderAccountBadge();
+    const nextId = getCurrentUser()?.id;
+    if (nextId !== previousCustomerId) {
+      document.querySelectorAll('.wishlist-toggle-btn').forEach(button => button.remove());
+      renderWishlistButtons();
+    }
+    if (previousCustomerId && nextId !== previousCustomerId && (isProfilePage || isCheckoutPage)) {
+      if (profilePage) { profilePage.classList.remove('visible'); accountSectionContent.replaceChildren(); }
+      if (isCheckoutPage) {
+        saveCheckoutFormForAuthentication();
+        document.getElementById('checkoutPage').hidden = true;
+      }
+      window.location.replace(isCheckoutPage ? 'cart.html?login=checkout' : 'index.html?login=1');
+    }
+    previousCustomerId = nextId;
+  });
+  if (auth.profileUnavailable()) showToast('You are signed in, but your account details could not load. Refresh to try again.', 'error');
+
   if (window.location.hash === '#login' || new URLSearchParams(window.location.search).get('login') === '1') {
     setAuthView('login');
     openAuthModal();
@@ -2601,6 +2545,7 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = 'cart.html?login=checkout';
       return;
     }
+    document.getElementById('checkoutPage').hidden = false;
     applyDefaultAddressToCheckout();
     restorePendingCheckoutFormData();
     showDynamicSkeleton(document.getElementById('checkoutSummaryItems'), checkoutSkeleton());
@@ -2756,6 +2701,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   };
+  window.refreshDynamicProductBindings();
 
   if (isConfirmationPage) {
     const receiptCard = document.getElementById('confirmReceiptCard');

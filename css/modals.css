@@ -45,7 +45,14 @@
 
 .auth-modal-container {
   max-width: 480px;
+  max-height: calc(100dvh - 40px);
+  overscroll-behavior: contain;
 }
+
+.auth-status { color: var(--text-secondary); overflow-wrap: anywhere; }
+.auth-status:empty { display: none; }
+.auth-status:not(:empty) { margin-top: 16px; }
+.auth-switch button { min-height: 44px; }
 
 .auth-modal-container .section-title {
   margin-bottom: 24px;
