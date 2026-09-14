@@ -268,7 +268,7 @@
       } else thumbnail.textContent = 'No image';
       cell(row, product.title);
       cell(row, product.category);
-      cell(row, product.is_custom_quote ? 'Custom Quote' : product.price == null ? '—' : `$${Number(product.price).toFixed(2)}`);
+        cell(row, product.is_custom_quote ? 'Custom Quote' : product.price == null ? '—' : `Rs. ${Math.round(Number(product.price)).toLocaleString('en-PK')}`);
       cell(row, product.in_stock ? 'Yes' : 'No');
       const actions = document.createElement('div');
       actions.className = 'admin-row-actions';

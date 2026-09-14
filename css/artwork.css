@@ -150,6 +150,13 @@
   margin: 8px 0 14px;
 }
 
+.quick-view-description {
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+
 .quick-view-details .artwork-price {
   margin-bottom: 22px;
 }

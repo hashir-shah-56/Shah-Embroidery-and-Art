@@ -147,7 +147,7 @@ function mockClient(owner) {
     assert.equal(await page.locator('#price').inputValue(), '40');
     await page.evaluate(() => { fixture.failure = ''; });
     await page.locator('#productSubmit').click();
-    await page.waitForFunction(() => document.querySelector('#productsBody').textContent.includes('$40.00'));
+    await page.waitForFunction(() => document.querySelector('#productsBody').textContent.includes('Rs. 40'));
     assert.equal(await page.evaluate(() => fixture.uploads), 1);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.locator('#is_custom_quote').check();

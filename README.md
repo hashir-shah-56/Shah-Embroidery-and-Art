@@ -325,6 +325,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 > 8. **Social Profiles Point to Handle Slugs:** Footer social icons link to `instagram.com/shah-embroidery`, `facebook.com/shah-embroidery`, and `pinterest.com/shah-embroidery`. Confirm these slugs map to the studio's live profiles (handles assumed from owner-provided slug).
 > 9. **Font Fallbacks in Effect:** Declared webfonts (Cormorant Garamond / Plus Jakarta Sans) are not bundled or hot-linked; browsers silently fall back to Georgia / system sans-serif. Load the families (self-host or Google Fonts) to activate the intended typography.
 > 10. **Product Loading Fallback:** Featured cards retain their hardcoded content if the Supabase query fails or returns no rows.
+> 11. **Currency Display:** Prices now display as PKR (`Rs.`) without exchange-rate conversion. Historical order records retain the currency-formatted string stored when each order was created.
 
 ---
 
@@ -455,6 +456,12 @@ Credentials live in `js/supabase-client.js`; real values must not be committed t
 - Validation on 2026-09-14: admin browser regression passed with no Is Featured form control. The live homepage request was `in_stock=eq.true&order=created_at.desc&limit=6`, contained no `is_featured` filter, rendered without runtime errors, and returned the current newest in-stock catalog result.
 
 ## 11. Change Log
+
+### [2026-09-14] - PKR Price Display
+- Updated product cards, Gallery, admin tables, cart, checkout, and order confirmation to display numeric prices as `Rs. X,XXX`. Stored numeric values remain unchanged, and historical order totals retain their original stored formatting.
+
+### [2026-09-14] - Quick View Descriptions and Description Search
+- Quick View now displays each product's description with a fallback for missing text, and site search matches product descriptions while keeping suggestions compact. Confirmed `Images/hero_embroidery.jpg` exists at the referenced path.
 
 ### [2026-09-14] - View-Only Gallery Modal
 - Gallery items now open a dedicated informational modal with a prominent image, description, category, and price, leaving transactional Quick View behavior unchanged for Latest Work and Shop.

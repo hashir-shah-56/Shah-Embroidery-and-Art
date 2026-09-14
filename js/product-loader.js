@@ -1,6 +1,8 @@
 function createProductCardHTML(product) {
   const isCustom = product.is_custom_quote;
-  const priceAttr = isCustom ? 'Custom Quote' : `$${Number(product.price).toFixed(2)}`;
+  const priceAttr = isCustom ? 'Custom Quote' : `Rs. ${Math.round(Number(product.price)).toLocaleString('en-PK')}`;
+  const descriptionAttr = String(product.description || '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const badgeHTML = product.badge_label
     ? `<span class="badge ${product.badge_style || 'badge-gold'} artwork-badge">${product.badge_label}</span>`
@@ -14,7 +16,7 @@ function createProductCardHTML(product) {
     : `<div class="artwork-price">${priceAttr}</div>`;
 
   return `
-    <div class="artwork-card" data-title="${product.title}" data-category="${product.category}" data-price="${priceAttr}">
+    <div class="artwork-card" data-title="${product.title}" data-category="${product.category}" data-price="${priceAttr}" data-description="${descriptionAttr}">
       <div class="artwork-img-box">
         ${badgeHTML}
         <img src="${product.image_url}" alt="${product.title}" class="artwork-img"

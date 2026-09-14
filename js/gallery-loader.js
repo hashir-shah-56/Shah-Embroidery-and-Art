@@ -11,7 +11,7 @@
       return product.custom_price_hint ? `Custom Quote — ${product.custom_price_hint}` : 'Custom Quote';
     }
     const amount = Number(product.price);
-    return Number.isFinite(amount) ? `$${amount.toFixed(2)}` : 'Custom Quote';
+    return Number.isFinite(amount) ? `Rs. ${Math.round(amount).toLocaleString('en-PK')}` : 'Custom Quote';
   };
 
   const ensureGalleryViewModal = () => {
@@ -107,6 +107,7 @@
         const item = document.createElement('div');
         item.className = `gallery-item${index % 3 === 0 ? ' tall' : ''}`;
         item.dataset.productId = product.id == null ? '' : String(product.id);
+        item.dataset.description = product.description || '';
         item.tabIndex = 0;
         item.setAttribute('role', 'button');
         item.setAttribute('aria-label', `View ${title}`);
@@ -130,6 +131,7 @@
           }
         });
       });
+      if (window.refreshDynamicProductBindings) window.refreshDynamicProductBindings();
     };
     const renderFilters = categories => {
       filters.innerHTML = '';

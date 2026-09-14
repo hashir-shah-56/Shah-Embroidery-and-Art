@@ -226,10 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const toggleWishlistItem = (itemData) => {
     const currentUser = getCurrentUser();
-    const itemKey = `${itemData.title}|${itemData.category || 'Hand Embroidery'}|${itemData.price || '$0.00'}`;
+    const itemKey = `${itemData.title}|${itemData.category || 'Hand Embroidery'}|${itemData.price || 'Rs. 0'}`;
     const currentWishlist = getWishlist();
-    const exists = currentWishlist.some(item => `${item.title}|${item.category || 'Hand Embroidery'}|${item.price || '$0.00'}` === itemKey);
-    const updatedWishlist = exists ? currentWishlist.filter(item => `${item.title}|${item.category || 'Hand Embroidery'}|${item.price || '$0.00'}` !== itemKey) : [...currentWishlist, itemData];
+    const exists = currentWishlist.some(item => `${item.title}|${item.category || 'Hand Embroidery'}|${item.price || 'Rs. 0'}` === itemKey);
+    const updatedWishlist = exists ? currentWishlist.filter(item => `${item.title}|${item.category || 'Hand Embroidery'}|${item.price || 'Rs. 0'}` !== itemKey) : [...currentWishlist, itemData];
     saveWishlist(updatedWishlist);
     renderWishlistButtons();
     if (profilePage && profilePage.classList.contains('visible')) {
@@ -365,12 +365,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.artwork-card').forEach(card => {
       const title = card.getAttribute('data-title') || card.querySelector('.artwork-title')?.textContent?.trim() || '';
       const category = card.getAttribute('data-category') || card.querySelector('.artwork-category')?.textContent?.trim() || 'Artwork';
+      const description = card.getAttribute('data-description') || '';
       const img = card.querySelector('.artwork-img')?.src || '';
       if (title && !seenTitles.has(title.toLowerCase())) {
         seenTitles.add(title.toLowerCase());
         catalogItems.push({
           title,
           category,
+          description,
           img,
           element: card,
           type: 'artwork'
@@ -382,12 +384,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.gallery-item').forEach(item => {
       const title = item.querySelector('.gallery-overlay-title')?.textContent?.trim() || '';
       const category = item.querySelector('.gallery-overlay-cat')?.textContent?.trim() || item.getAttribute('data-category') || 'Gallery';
+      const description = item.getAttribute('data-description') || '';
       const img = item.querySelector('.gallery-img')?.src || '';
       if (title && !seenTitles.has(title.toLowerCase())) {
         seenTitles.add(title.toLowerCase());
         catalogItems.push({
           title,
           category,
+          description,
           img,
           element: item,
           type: 'gallery'
@@ -496,7 +500,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter matching items (case-insensitive title or category match)
     const matches = catalogItems.filter(item =>
       item.title.toLowerCase().includes(cleanQuery) ||
-      item.category.toLowerCase().includes(cleanQuery)
+      item.category.toLowerCase().includes(cleanQuery) ||
+      item.description.toLowerCase().includes(cleanQuery)
     );
 
     // Limit to max 6 results
@@ -1245,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 <div class="order-card-footer">
-                  <div class="order-total">Total: ${order.totalAmount || '$0.00'}</div>
+                  <div class="order-total">Total: ${order.totalAmount || 'Rs. 0'}</div>
                   <button type="button" class="order-expand-btn" data-order-index="${idx}">View details</button>
                 </div>
 
@@ -1357,7 +1362,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="wishlist-item-content">
                 <div class="artwork-category">${escapeHTML(item.category || 'Hand Embroidery')}</div>
                 <div class="artwork-title" style="font-size: 1.2rem; margin-bottom: 0;">${escapeHTML(item.title)}</div>
-                <div class="artwork-price" style="margin-top: 10px;">${escapeHTML(item.price || '$140.00')}</div>
+        <div class="artwork-price" style="margin-top: 10px;">${escapeHTML(item.price || 'Rs. 140')}</div>
                 <div class="wishlist-item-actions">
                   <button type="button" class="btn btn-primary move-to-cart" data-title="${escapeHTML(item.title)}">Add to Cart</button>
                   <button type="button" class="wishlist-remove-btn remove-wishlist-item" data-title="${escapeHTML(item.title)}"><i class="fa-solid fa-trash"></i></button>
@@ -1824,6 +1829,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="quick-view-details">
               <p class="artwork-category" id="quickViewCategory"></p>
               <h2 class="section-title" id="quickViewTitle"></h2>
+              <p class="quick-view-description" id="quickViewDescription"></p>
               <p class="artwork-price" id="quickViewPrice"></p>
               <button class="btn btn-primary" id="quickViewAddToCart" type="button">Add to Cart</button>
             </div>
@@ -1837,6 +1843,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalImg = document.getElementById('quickViewImg');
   const modalTitle = document.getElementById('quickViewTitle');
   const modalCategory = document.getElementById('quickViewCategory');
+  const modalDescription = document.getElementById('quickViewDescription');
   const modalPrice = document.getElementById('quickViewPrice');
 
   const wireQuickViewButtons = (scope = document) => {
@@ -1850,11 +1857,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const title = card.getAttribute('data-title') || 'Handcrafted Artwork';
           const category = card.getAttribute('data-category') || 'Hand Embroidery';
           const price = card.getAttribute('data-price') || 'Custom Quote';
+          const description = card.getAttribute('data-description') || 'A handcrafted piece from Shah Embroidery & Art.';
           const imgSrc = card.querySelector('.artwork-img')?.src || '';
 
           if (modalTitle) modalTitle.textContent = title;
           if (modalCategory) modalCategory.textContent = category;
           if (modalPrice) modalPrice.textContent = price;
+          if (modalDescription) modalDescription.textContent = description;
           if (modalImg) {
             modalImg.src = imgSrc;
             modalImg.alt = title;
@@ -2000,12 +2009,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const parsePrice = (priceStr) => {
     if (!priceStr || priceStr.toLowerCase().includes('custom')) return 0;
-    const clean = priceStr.replace(/[^0-9.]/g, '');
-    return parseFloat(clean) || 0;
+    const numericMatch = priceStr.replace(/,/g, '').match(/\d+(?:\.\d+)?/);
+    return parseFloat(numericMatch?.[0]) || 0;
   };
 
   const formatPrice = (amount) => {
-    return '$' + amount.toFixed(2);
+    return 'Rs. ' + Math.round(amount).toLocaleString('en-PK');
   };
 
   const updateCartBadge = () => {
@@ -2034,7 +2043,7 @@ document.addEventListener('DOMContentLoaded', () => {
         id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         title: itemData.title,
         category: itemData.category || 'Hand Embroidery',
-        price: itemData.price || '$140.00',
+        price: itemData.price || 'Rs. 140',
         numericPrice: numericPrice,
         img: itemData.img || '',
         quantity: 1
@@ -2052,7 +2061,7 @@ document.addEventListener('DOMContentLoaded', () => {
     quickViewAddToCartBtn.addEventListener('click', () => {
       const modalTitle = document.getElementById('quickViewTitle')?.textContent || 'Artwork Item';
       const modalCategory = document.getElementById('quickViewCategory')?.textContent || 'Hand Embroidery';
-      const modalPrice = document.getElementById('quickViewPrice')?.textContent || '$140.00';
+      const modalPrice = document.getElementById('quickViewPrice')?.textContent || 'Rs. 140';
       const modalImg = document.getElementById('quickViewImg')?.src || '';
 
       const quickViewModalEl = document.getElementById('quickViewModal');
