@@ -89,10 +89,13 @@
     if (!user) throw new Error('unavailable');
     return current();
   };
-  const signUp = async (name, email, password, redirectTo) => {
+  const signUp = async (name, email, password) => {
     if (!client) throw new Error('unavailable');
+    // One callback landing point per environment; Supabase must allow this origin.
+    if (!['http:', 'https:'].includes(window.location.protocol)) throw new Error('unavailable');
+    const emailRedirectTo = `${window.location.origin}/`;
     const result = await client.auth.signUp({ email: email.trim().toLowerCase(), password,
-      options: { data: { full_name: name.trim() }, emailRedirectTo: redirectTo } });
+      options: { data: { full_name: name.trim() }, emailRedirectTo } });
     if (result.error) throw result.error;
     if (result.data.session) {
       if (pending) await pending;

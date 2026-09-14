@@ -12,6 +12,11 @@ function mockClient() {
   let listener;
   const user = () => JSON.parse(localStorage.getItem('test-session') || 'null');
   const account = email => ({ id: '11111111-1111-4111-8111-111111111111', email, created_at: '2026-09-14', user_metadata: { full_name: 'Test Customer' } });
+  fixture.confirm = () => {
+    const value = account('test@example.com');
+    localStorage.setItem('test-session', JSON.stringify(value));
+    listener?.('SIGNED_IN', { user: value });
+  };
   const auth = {
     async getSession() { return { data: { session: user() ? { user: user() } : null } }; },
     async getUser() { return fixture.mode === 'expired' ? { error: { status: 401 } } : { data: { user: user() } }; },
@@ -58,7 +63,8 @@ function mockClient() {
 }
 (async () => {
   const server = http.createServer((req, res) => {
-    const file = path.resolve(root, '.' + decodeURIComponent(req.url.split('?')[0]));
+    const pathname = decodeURIComponent(req.url.split('?')[0]);
+    const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
     if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (error, data) => {
       if (error) { res.writeHead(404); return res.end(); }
@@ -142,7 +148,7 @@ function mockClient() {
     await page.locator('#signupForm [type=submit]').click();
     await page.waitForFunction(() => document.querySelector('.auth-status').textContent.includes('Verify'));
     assert.equal(await page.evaluate(() => customerAuth.getCurrentUser()), null);
-    assert.match(await page.evaluate(() => fixture.redirect), /checkout.html$/);
+    assert.equal(await page.evaluate(() => fixture.redirect), base + '/');
     assert.equal(await page.evaluate(() => fixture.passwordUnmodified), true);
     console.log('PASS: validation, generic errors, network recovery, confirmation-required signup');
     const cart = [{ title: 'Test Art', category: 'Hoop Art', price: 'Rs. 500', numericPrice: 500, quantity: 2, img: '' }];
@@ -184,6 +190,56 @@ function mockClient() {
     await page.evaluate(async () => { fixture.mode = 'expired'; await customerAuth.refresh(); });
     await page.waitForURL('**/index.html?login=1');
     console.log('PASS: immediate-session signup, profile failure preserves identity, invalid session blocks profile');
+    // Test both origins with repository assets and mocked Auth, without sending emails.
+    for (const origin of [base, 'https://shah-embroidery-and-art.netlify.app']) {
+      const confirmationContext = await browser.newContext();
+      await confirmationContext.route('**/*', route => {
+        const url = new URL(route.request().url());
+        if (url.origin !== origin) return route.fulfill({ body: '' });
+        if (url.pathname === '/js/supabase-client.js') return route.fulfill({ contentType: 'application/javascript', body: `(${mockClient.toString()})();` });
+        const file = path.resolve(root, '.' + (url.pathname === '/' ? '/index.html' : url.pathname));
+        if (!file.startsWith(root + path.sep) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
+        return route.fulfill({ path: file });
+      });
+      const confirmationPage = await confirmationContext.newPage();
+      confirmationPage.on('pageerror', error => errors.push(error.message));
+      await confirmationPage.goto(origin + '/index.html?login=1');
+      await confirmationPage.evaluate(() => customerAuth.ready);
+      await confirmationPage.locator('#authToggleButton').click();
+      await confirmationPage.locator('#signupName').fill('Test Customer');
+      await confirmationPage.locator('#signupEmail').fill('test@example.com');
+      await confirmationPage.locator('#signupPassword').fill('StrongPass1');
+      await confirmationPage.locator('#signupConfirmPassword').fill('StrongPass1');
+      await confirmationPage.evaluate(value => { fixture.mode = 'verify'; localStorage.setItem('shah_cart', JSON.stringify(value)); }, cart);
+      await confirmationPage.locator('#signupForm [type=submit]').click();
+      await confirmationPage.waitForFunction(() => fixture.redirect);
+      assert.equal(await confirmationPage.evaluate(() => fixture.redirect), origin + '/');
+      assert.equal(await confirmationPage.evaluate(() => customerAuth.getCurrentUser()), null);
+      // Simulate the SDK receiving the confirmed session, then following the email callback.
+      await confirmationPage.evaluate(() => fixture.confirm());
+      await confirmationPage.waitForFunction(() => document.querySelector('#navAccountBtn').classList.contains('is-logged-in'));
+      assert.equal(await confirmationPage.locator('#authModal').evaluate(el => el.classList.contains('active')), false);
+      await confirmationPage.goto(origin + '/');
+      await confirmationPage.evaluate(() => customerAuth.ready);
+      assert.equal(confirmationPage.url(), origin + '/');
+      assert.equal(await confirmationPage.locator('#authModal').evaluate(el => el.classList.contains('active')), false);
+      await confirmationPage.reload();
+      await confirmationPage.waitForFunction(() => document.querySelector('#navAccountBtn').classList.contains('is-logged-in'));
+      assert.equal(await confirmationPage.evaluate(() => fixture.listeners), 1);
+      assert.deepEqual(await confirmationPage.evaluate(() => JSON.parse(localStorage.getItem('shah_cart'))), cart);
+      await confirmationPage.evaluate(() => localStorage.setItem('loginRedirectTarget', JSON.stringify('checkout.html')));
+      await confirmationPage.goto(origin + '/');
+      await confirmationPage.waitForURL('**/checkout.html');
+      assert.equal(await confirmationPage.evaluate(() => localStorage.getItem('loginRedirectTarget')), null);
+      assert.deepEqual(await confirmationPage.evaluate(() => JSON.parse(localStorage.getItem('shah_cart'))), cart);
+      await confirmationPage.goto(origin + '/profile.html');
+      await confirmationPage.locator('#profileLogoutBtn').click();
+      await confirmationPage.waitForURL('**/index.html?login=1');
+      assert.equal(await confirmationPage.evaluate(() => customerAuth.getCurrentUser()), null);
+      assert.deepEqual(await confirmationPage.evaluate(() => JSON.parse(localStorage.getItem('shah_cart'))), cart);
+      await confirmationContext.close();
+    }
+    console.log('PASS: local/production-origin signup callbacks, confirmed navbar, no reopened modal, refresh, checkout intent, cart and logout (mocked Auth)');
     // Exercise the real client bootstrap with the CDN unavailable.
     await page.route('**/js/supabase-client.js', route => route.fulfill({ contentType: 'application/javascript', body: fs.readFileSync(path.join(root, 'js/supabase-client.js'), 'utf8') }));
     await goto('index.html'); await open(); await login();

@@ -1013,9 +1013,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await auth.ready;
       if (signup) {
-        const target = getFromStorage(STORAGE_KEYS.loginRedirectTarget, null) === 'checkout.html' ? 'checkout.html' : 'profile.html';
         const session = await auth.signUp(form.querySelector('#signupName').value, form.querySelector('#signupEmail').value,
-          form.querySelector('#signupPassword').value, new URL(target, window.location.href).href);
+          form.querySelector('#signupPassword').value);
         if (!session) {
           authStatus.textContent = 'Check your inbox for a confirmation link if registration is available for this address. Verify your email before signing in. If you already have an account, try logging in.';
           form.querySelectorAll('[type="password"]').forEach(field => { field.value = ''; });
@@ -2492,6 +2491,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  const resumeConfirmedAuthentication = () => {
+    if (!getCurrentUser() || accountModal?.querySelector('form[data-busy="true"]')) return;
+    // The SDK processes the confirmation URL before getSession/getUser resolve.
+    // Leave ordinary confirmations on the homepage; only resume a saved local intent.
+    if (accountModal?.classList.contains('active')) closeAuthModal();
+    const isLandingPage = window.location.pathname === '/' || window.location.pathname === '/index.html';
+    if (isLandingPage && getFromStorage(STORAGE_KEYS.loginRedirectTarget, null) === 'checkout.html') {
+      try { localStorage.removeItem(STORAGE_KEYS.loginRedirectTarget); } catch { /* Storage may be unavailable. */ }
+      window.location.replace('checkout.html');
+    }
+  };
+
   await auth.ready;
   let previousCustomerId = getCurrentUser()?.id;
   window.addEventListener('customer-auth-change', () => {
@@ -2510,10 +2521,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.replace(isCheckoutPage ? 'cart.html?login=checkout' : 'index.html?login=1');
     }
     previousCustomerId = nextId;
+    resumeConfirmedAuthentication();
   });
+  resumeConfirmedAuthentication();
   if (auth.profileUnavailable()) showToast('You are signed in, but your account details could not load. Refresh to try again.', 'error');
 
-  if (window.location.hash === '#login' || new URLSearchParams(window.location.search).get('login') === '1') {
+  if (!getCurrentUser() && (window.location.hash === '#login' || new URLSearchParams(window.location.search).get('login') === '1')) {
     setAuthView('login');
     openAuthModal();
   }
