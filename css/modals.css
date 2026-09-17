@@ -51,6 +51,14 @@
 
 .auth-status { color: var(--text-secondary); overflow-wrap: anywhere; }
 .auth-status:empty { display: none; }
+.auth-text-link { display: block; min-height: 44px; padding: 8px 0; margin: 4px 0 12px; color: var(--text-secondary); background: transparent; border: 0; font: inherit; font-size: 0.875rem; cursor: pointer; }
+.auth-text-link:hover { color: var(--accent-gold); }
+.auth-text-link:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 3px; }
+.password-reset-card { width: 100%; max-width: 520px; margin: 0 auto; padding: clamp(24px, 5vw, 40px); background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.password-reset-card h1 { font-size: clamp(2rem, 5vw, 2.6rem); margin-bottom: 16px; }
+.password-reset-card p { color: var(--text-secondary); margin-bottom: 24px; }
+.password-reset-card .btn { width: 100%; min-height: 44px; }
+.password-reset-card [hidden], .auth-switch[hidden] { display: none; }
 .auth-status:not(:empty) { margin-top: 16px; }
 .auth-switch button { min-height: 44px; }
 

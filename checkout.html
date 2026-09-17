@@ -80,6 +80,7 @@
                         </div>
                         <div class="form-section-group">
                             <h4 class="form-group-heading">2. Delivery Address</h4>
+                            <div id="checkoutAddressStatus" role="status" aria-live="polite"></div>
                             <div class="form-group"><label class="form-label" for="checkoutAddress">Street Address
                                     *</label><input type="text" id="checkoutAddress" class="form-input" required><span
                                     class="form-error-text" id="error-checkoutAddress"></span></div>
@@ -91,7 +92,8 @@
                                         Code</label><input type="text" id="checkoutPostal" class="form-input"></div>
                                 <div class="form-group"><label class="form-label" for="checkoutCountry">Country
                                         *</label><select id="checkoutCountry" class="form-select">
-                                        <option selected>Pakistan</option>
+                                        <option value="" selected>Select country</option>
+                                        <option>Pakistan</option>
                                         <option>Bangladesh</option>
                                         <option>India</option>
                                         <option>Sri Lanka</option>
@@ -236,6 +238,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/address-service.js"></script>
+  <script src="js/order-service.js"></script>
   <script src="js/script.js?v=20260914-customer-auth"></script>
 </body>
 

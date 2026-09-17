@@ -9,6 +9,9 @@
   let profileUnavailable = false;
   let profileFetchedAt = 0;
   let savingProfile = false;
+  let recoveryUserId = null;
+  let savingRecovery = false;
+  const isRecoveryPage = location.pathname.endsWith('/reset-password.html');
   const PROFILE_CACHE_MS = 60000;
   const localDataKey = identity => {
     // Compatibility only: this mapping never establishes identity or authorization.
@@ -117,6 +120,34 @@
     }
     return Boolean(result.data.session);
   };
+  const requestPasswordReset = async email => {
+    if (!client || !['http:', 'https:'].includes(location.protocol)) throw new Error('unavailable');
+    const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/reset-password.html`
+    });
+    if (error) throw error;
+  };
+  const hasRecoverySession = () => Boolean(recoveryUserId && user?.id === recoveryUserId);
+  const resetPassword = async password => {
+    if (savingRecovery) throw new Error('busy');
+    savingRecovery = true;
+    try {
+      if (!client || !hasRecoverySession()) throw { code: 'recovery_expired' };
+      const { data, error } = await client.auth.getUser();
+      if (error || data.user?.id !== recoveryUserId) {
+        recoveryUserId = null; notify(); throw { code: 'recovery_expired' };
+      }
+      const result = await client.auth.updateUser({ password });
+      if (result.error) throw result.error;
+      recoveryUserId = null;
+    } finally { savingRecovery = false; }
+  };
+  const finishRecovery = async () => {
+    if (!client) throw new Error('unavailable');
+    const { error } = await client.auth.signOut({ scope: 'local' });
+    if (error) throw error;
+    revision++; user = null; profile = null; recoveryUserId = null; notify();
+  };
   const signOut = async () => {
     if (!client) throw new Error('unavailable');
     const result = await client.auth.signOut();
@@ -182,13 +213,16 @@
   };
   window.customerAuth = { getCurrentUser: current, getCurrentProfile: () => profile ? { ...profile } : null,
     refreshCurrentProfile: () => refresh({ forceProfile: true }), populateProfileFields,
-    profileUnavailable: () => profileUnavailable, refresh, signIn, signUp, signOut, updateProfile, message };
-  window.customerAuth.ready = refresh();
+    profileUnavailable: () => profileUnavailable, refresh, signIn, signUp, signOut, updateProfile, message,
+    requestPasswordReset, hasRecoverySession, resetPassword, finishRecovery };
   window.addEventListener('pageshow', event => { if (event.persisted) refresh({ forceProfile: true }); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
-  client?.auth?.onAuthStateChange((event) => {
+  client?.auth?.onAuthStateChange((event, session) => {
     // Never await another Supabase request inside its Auth lock.
-    if (event === 'SIGNED_OUT') { revision++; user = null; profile = null; notify(); }
+    if (event === 'PASSWORD_RECOVERY' && isRecoveryPage) recoveryUserId = session?.user?.id || null;
+    if (session?.user && recoveryUserId && session.user.id !== recoveryUserId) recoveryUserId = null;
+    if (event === 'SIGNED_OUT') { revision++; user = null; profile = null; recoveryUserId = null; notify(); }
     else if (event !== 'INITIAL_SESSION') setTimeout(() => refresh({ forceProfile: event === 'USER_UPDATED' }), 0);
   });
+  window.customerAuth.ready = refresh();
 })();

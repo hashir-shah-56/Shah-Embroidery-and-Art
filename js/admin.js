@@ -461,6 +461,7 @@
         if (!session || session.user?.id !== ownerId) redirectToLogin();
       });
       $('authStatus').hidden = true; dashboard.hidden = false;
+      window.adminOrders?.initialize({ toast, pageSize });
       syncQuote();
       await loadCategories();
       await loadProducts();

@@ -16,8 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     lastOrder: 'shah_last_order',
     wishlist: 'shah_wishlist',
     customOrderRequests: 'shah_custom_order_requests',
-    addresses: 'shah_saved_addresses',
-    orders: 'shah_orders',
     pendingCheckoutFormData: 'pendingCheckoutFormData',
     loginRedirectTarget: 'loginRedirectTarget'
   };
@@ -27,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const phoneRegex = /^[+\d\s().-]+$/;
   const SKELETON_MIN_MS = 380;
   const validationState = new WeakMap();
-  const requiredFieldIds = ['loginEmail', 'loginPassword', 'signupName', 'signupEmail', 'signupPassword', 'signupConfirmPassword', 'settingsName', 'settingsEmail', 'checkoutName', 'checkoutPhone', 'checkoutEmail', 'checkoutAddress', 'checkoutCity', 'checkoutPostal', 'checkoutCountry', 'addressName', 'addressText', 'addressCity', 'addressPostal', 'addressCountry', 'addressPhone', 'customName', 'customEmail', 'customDetails', 'contactName', 'contactEmail', 'contactMessage'];
+  const requiredFieldIds = ['loginEmail', 'loginPassword', 'signupName', 'signupEmail', 'signupPassword', 'signupConfirmPassword', 'settingsName', 'settingsEmail', 'checkoutName', 'checkoutPhone', 'checkoutEmail', 'checkoutAddress', 'checkoutCity', 'checkoutCountry', 'addressName', 'addressText', 'addressCity', 'addressCountry', 'addressPhone', 'customName', 'customEmail', 'customDetails', 'contactName', 'contactEmail', 'contactMessage'];
 
   const skeletonText = (length = 'long') => `<span class="skeleton-text-line ${length}"></span>`;
 
@@ -180,24 +178,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  const ensureStoredOrders = () => {
-    const existingOrders = getFromStorage(STORAGE_KEYS.orders, []);
-    if (existingOrders.length === 0) {
-      const lastOrder = getFromStorage(STORAGE_KEYS.lastOrder, null);
-      if (lastOrder) {
-        saveToStorage(STORAGE_KEYS.orders, [lastOrder]);
-      }
-    }
-  };
-
-  ensureStoredOrders();
-
-  const getUserOrders = () => {
-    const user = getCurrentUser();
-    const orders = getFromStorage(STORAGE_KEYS.orders, []);
-    if (!user) return [];
-    return orders.filter(order => order.customerId ? order.customerId === user.id : order.customer && order.customer.email && order.customer.email.toLowerCase() === user.localDataKey);
-  };
+  const orderService = window.customerOrders;
+  let customerOrderRows = [];
+  let ordersLoadError = false;
+  const getUserOrders = () => customerOrderRows;
 
   const getWishlist = () => {
     const currentUser = getCurrentUser();
@@ -227,49 +211,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     saveToStorage(STORAGE_KEYS.wishlist, wishlistMap);
   };
 
-  const getSavedAddresses = () => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return [];
-    const addresses = getFromStorage(STORAGE_KEYS.addresses, {});
-    return addresses[currentUser.localDataKey] || [];
-  };
-
-  const getDefaultAddress = () => {
-    const addresses = getSavedAddresses();
-    if (!addresses.length) return null;
-    return addresses.find(address => address.isDefault) || addresses[0];
-  };
-
-  const saveAddresses = (addresses) => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-    const addressMap = getFromStorage(STORAGE_KEYS.addresses, {});
-    addressMap[currentUser.localDataKey] = addresses;
-    saveToStorage(STORAGE_KEYS.addresses, addressMap);
-  };
-
-  const applyDefaultAddressToCheckout = () => {
+  const addressService = window.customerAddresses;
+  const getSavedAddresses = () => addressService?.snapshot() || [];
+  const applyDefaultAddressToCheckout = async () => {
     auth.populateProfileFields({ name: 'checkoutName', email: 'checkoutEmail', phone: 'checkoutPhone' });
-    const user = getCurrentUser();
-    const defaultAddress = getDefaultAddress();
-    if (!defaultAddress || !user) return;
-
-    const values = {
-      checkoutName: defaultAddress.name || user.name || '',
-      checkoutPhone: defaultAddress.phone || '',
-      checkoutEmail: user.email || '',
-      checkoutAddress: defaultAddress.address || '',
-      checkoutCity: defaultAddress.city || '',
-      checkoutPostal: defaultAddress.postal || '',
-      checkoutCountry: defaultAddress.country || 'Pakistan'
-    };
-
-    Object.entries(values).forEach(([id, value]) => {
-      const field = document.getElementById(id);
-      if (field && !field.value.trim()) {
-        field.value = value;
+    if (!addressService || !getCurrentUser()) return;
+    const status = document.getElementById('checkoutAddressStatus');
+    if (status) { status.textContent = 'Loading saved addresses...'; status.setAttribute('aria-busy', 'true'); }
+    try {
+      const addresses = await addressService.getAddresses();
+      const address = addresses.find(row => row.is_default);
+      if (address) {
+        const values = {
+          checkoutName: address.full_name, checkoutPhone: address.phone,
+          checkoutAddress: [address.address_line_1, address.address_line_2, address.state_province].filter(Boolean).join(', '),
+          checkoutCity: address.city, checkoutPostal: address.postal_code, checkoutCountry: address.country
+        };
+        Object.entries(values).forEach(([id, value]) => {
+          const field = document.getElementById(id);
+          if (field && !field.value.trim() && field.dataset.checkoutEdited !== 'true' && value) {
+            if (field.tagName === 'SELECT' && ![...field.options].some(option => option.value === value)) field.add(new Option(value, value));
+            field.value = value;
+            field.dispatchEvent(new Event('input', { bubbles: true }));
+            if (field.tagName === 'SELECT') field.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
       }
-    });
+      if (status) status.textContent = '';
+    } catch {
+      if (status) {
+        status.textContent = "Saved addresses could not load. You can enter a delivery address below. ";
+        const retry = document.createElement('button');
+        retry.type = 'button'; retry.className = 'btn btn-outline-gold'; retry.textContent = 'Retry';
+        retry.addEventListener('click', applyDefaultAddressToCheckout); status.append(retry);
+      }
+    } finally {
+      const country = document.getElementById('checkoutCountry');
+      if (getCurrentUser() && country && !country.value && country.dataset.checkoutEdited !== 'true') {
+        country.value = 'Pakistan'; country.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      status?.setAttribute('aria-busy', 'false');
+    }
   };
 
   const getCustomRequests = () => {
@@ -651,6 +633,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <form id="loginForm" novalidate>
               <div class="form-group"><label class="form-label" for="loginEmail">Email *</label><input class="form-input" type="email" id="loginEmail" required><span class="form-error-text" id="error-loginEmail"></span></div>
               <div class="form-group"><label class="form-label" for="loginPassword">Password *</label><input class="form-input" type="password" id="loginPassword" required><span class="form-error-text" id="error-loginPassword"></span></div>
+              <button class="auth-text-link" id="forgotPasswordButton" type="button">Forgot password?</button>
               <button class="btn btn-primary" type="submit">Log in</button>
             </form>
           </div>
@@ -662,6 +645,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               <div class="form-group"><label class="form-label" for="signupConfirmPassword">Confirm password *</label><input class="form-input" type="password" id="signupConfirmPassword" required><span class="form-error-text" id="error-signupConfirmPassword"></span></div>
               <button class="btn btn-primary" type="submit">Create account</button>
             </form>
+          </div>
+          <div class="auth-form-wrap" id="resetRequestFormWrap" style="display:none">
+            <form id="resetRequestForm" novalidate>
+              <div class="form-group"><label class="form-label" for="resetRequestEmail">Email *</label><input class="form-input" type="email" id="resetRequestEmail" autocomplete="email" required aria-describedby="error-resetRequestEmail"><span class="form-error-text" id="error-resetRequestEmail"></span></div>
+              <button class="btn btn-primary" type="submit">Send Reset Link</button>
+            </form>
+            <button class="auth-text-link" id="backToLoginButton" type="button">Back to Login</button>
           </div>
           <p class="auth-switch"><span id="authPromptText">New here?</span> <button type="button" id="authToggleButton">Create an account</button></p>
         </div>
@@ -763,15 +753,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   const setAuthView = (mode) => {
+    if (accountModal?.querySelector('form[data-busy="true"]')) return;
     authFormWraps.forEach(formWrap => {
-      const isLogin = formWrap.id === 'loginFormWrap';
-      formWrap.style.display = mode === 'login' ? (isLogin ? 'block' : 'none') : (!isLogin ? 'block' : 'none');
+      const target = { login: 'loginFormWrap', signup: 'signupFormWrap', reset: 'resetRequestFormWrap' }[mode];
+      formWrap.style.display = formWrap.id === target ? 'block' : 'none';
     });
+    accountModal.querySelector('.auth-switch').hidden = mode === 'reset';
+    accountModal.querySelector('.auth-status')?.replaceChildren();
 
     const isLoginMode = mode === 'login';
     const authModalTitle = document.getElementById('authModalTitle');
     if (authModalTitle) {
-      authModalTitle.textContent = isLoginMode ? 'Sign in to your account' : 'Create your account';
+      authModalTitle.textContent = mode === 'reset' ? 'Forgot Your Password?' : isLoginMode ? 'Sign in to your account' : 'Create your account';
     }
     if (authToggleButton) {
       authToggleButton.textContent = isLoginMode ? 'Create an account' : 'Already have an account? Log in';
@@ -779,6 +772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (authPromptText) {
       authPromptText.textContent = isLoginMode ? 'New here?' : 'Already a customer?';
     }
+    if (accountModal.classList.contains('active')) accountModal.querySelector('.auth-form-wrap:not([style*="none"]) input')?.focus();
   };
 
   const promptForCheckoutLogin = () => {
@@ -849,28 +843,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if ((field.required || requiredFieldIds.includes(id)) && !value) return 'This field is required.';
     if (!value && id === 'settingsPhone') return '';
     if (nameFields.includes(id) && value && (value.length < 2 || !nameRegex.test(value))) return 'Please enter a name using letters, spaces, hyphens, or apostrophes.';
+    if (id === 'addressCountry' && value.length < 2) return 'Please enter your country name.';
     if (emailFields.includes(id) && value && !emailRegex.test(value)) return 'Please enter a valid email address.';
     if (phoneFields.includes(id) && value && (!phoneRegex.test(value) || value.replace(/\D/g, '').length < 10 || value.replace(/\D/g, '').length > 15)) return 'Please enter a valid phone number with 10 to 15 digits.';
     if (['checkoutAddress', 'addressText'].includes(id) && value.length < 5) return 'Please enter at least 5 characters for the street address.';
     if (['checkoutCity', 'addressCity'].includes(id) && value.length < 2) return 'Please enter a valid city name.';
     if (['checkoutPostal', 'addressPostal'].includes(id)) {
-      const country = form.querySelector('[id$="Country"]')?.value || 'Pakistan';
-      const validPostal = country === 'Pakistan' ? /^\d{5}$/.test(value) : /^\d{4,6}$/.test(value);
+      const countryValue = form.querySelector('[id$="Country"]')?.value.trim() || 'Pakistan';
+      const country = countryValue.toLowerCase() === 'pakistan' ? 'Pakistan' : countryValue;
+      const validPostal = country === 'Pakistan' ? /^\d{5}$/.test(value) : /^[\p{L}\p{N}][\p{L}\p{N} -]{0,19}$/u.test(value);
+      if (country === 'Pakistan' && !value) return 'Please enter a 5-digit Pakistani postal code.';
       if (field.required && !value) return 'Postal code is required.';
-      if (value && !validPostal) return country === 'Pakistan' ? 'Please enter a 5-digit Pakistani postal code.' : 'Please enter a 4 to 6 digit postal code.';
+      if (value && !validPostal) return country === 'Pakistan' ? 'Please enter a 5-digit Pakistani postal code.' : 'Please enter a valid postal code (letters, numbers, spaces or hyphens).';
     }
+    if (field.maxLength > 0 && value.length > field.maxLength) return 'Please shorten this value.';
     if (['customDetails', 'contactMessage'].includes(id)) {
       if (value.length < 10) return 'Please enter at least 10 characters.';
       if (value.length > 500) return 'Please keep this message within 500 characters.';
     }
     if (id === 'settingsCurrentPassword' && !value && (form.querySelector('#settingsNewPassword')?.value || form.querySelector('#settingsConfirmPassword')?.value)) return 'Current password is required.';
     if (id === 'settingsNewPassword' && !value) return form.querySelector('#settingsCurrentPassword')?.value || form.querySelector('#settingsConfirmPassword')?.value ? 'New password is required.' : '';
-    if (id === 'signupPassword' || id === 'settingsNewPassword') {
+    if (['signupPassword', 'settingsNewPassword', 'resetNewPassword'].includes(id)) {
       if (value.length < 8) return 'Password must be at least 8 characters.';
       if (!/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/\d/.test(value)) return 'Use at least one uppercase letter, one lowercase letter, and one number.';
     }
-    if (id === 'signupConfirmPassword' || id === 'settingsConfirmPassword') {
-      const passwordId = id === 'signupConfirmPassword' ? 'signupPassword' : 'settingsNewPassword';
+    if (['signupConfirmPassword', 'settingsConfirmPassword', 'resetConfirmPassword'].includes(id)) {
+      const passwordId = { signupConfirmPassword: 'signupPassword', settingsConfirmPassword: 'settingsNewPassword', resetConfirmPassword: 'resetNewPassword' }[id];
       if (value !== form.querySelector(`#${passwordId}`)?.value) return 'Passwords must match exactly.';
     }
     if (id === 'settingsCurrentPassword' && value && value.length < 1) return 'Current password is required.';
@@ -890,7 +888,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const updatePasswordMeter = (field) => {
-    if (!['signupPassword', 'settingsNewPassword'].includes(field.id)) return;
+    if (!['signupPassword', 'settingsNewPassword', 'resetNewPassword'].includes(field.id)) return;
     let meter = field.parentElement?.querySelector('.password-strength');
     if (!meter) {
       meter = document.createElement('div');
@@ -941,7 +939,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const formFields = form => [...form.querySelectorAll('.form-input, .form-textarea, .form-select, .newsletter-input')]
-    .filter(field => requiredField(field) || form.id === 'accountSettingsForm');
+    .filter(field => requiredField(field) || field.id === 'checkoutPostal' || ['accountSettingsForm', 'addressForm'].includes(form.id));
   const formIsValid = form => formFields(form).every(field => !validationMessage(field, form));
   const updateSubmitState = form => {
     const submit = form.querySelector('[type="submit"]');
@@ -1048,6 +1046,69 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   const handleLoginSubmit = event => runAuthSubmit(event, false);
   const handleSignupSubmit = event => runAuthSubmit(event, true);
+  document.getElementById('forgotPasswordButton')?.addEventListener('click', () => setAuthView('reset'));
+  document.getElementById('backToLoginButton')?.addEventListener('click', () => setAuthView('login'));
+  document.getElementById('resetRequestForm')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (form.dataset.busy === 'true' || !formIsValid(form)) return;
+    const button = form.querySelector('[type=submit]');
+    form.dataset.busy = 'true'; form.setAttribute('aria-busy', 'true');
+    button.disabled = true; button.textContent = 'Sending...'; authStatus.textContent = '';
+    try {
+      await auth.requestPasswordReset(document.getElementById('resetRequestEmail').value);
+      authStatus.textContent = 'If an account exists for this email, a password reset link has been sent. Please check your inbox.';
+    } catch { authStatus.textContent = 'We could not send the reset link. Check your connection and try again in a few minutes.'; }
+    finally {
+      form.dataset.busy = 'false'; form.removeAttribute('aria-busy');
+      button.textContent = 'Send Reset Link'; updateSubmitState(form);
+    }
+  });
+
+  const resetPasswordForm = document.getElementById('resetPasswordForm');
+  if (resetPasswordForm) {
+    const status = document.getElementById('passwordResetStatus');
+    const returnButton = document.getElementById('resetReturnLogin');
+    let completed = false;
+    const showRecoveryState = () => {
+      if (completed || resetPasswordForm.dataset.busy === 'true') return;
+      const valid = auth.hasRecoverySession();
+      resetPasswordForm.hidden = !valid;
+      document.getElementById('resetInvalidLink').hidden = valid;
+      status.textContent = valid ? 'Choose a new password for your account.' : 'This password reset link is invalid or expired. Please request a new one.';
+      if (!valid) resetPasswordForm.reset();
+    };
+    auth.ready.then(showRecoveryState);
+    window.addEventListener('customer-auth-change', showRecoveryState);
+    resetPasswordForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (resetPasswordForm.dataset.busy === 'true' || !formIsValid(resetPasswordForm)) return;
+      const button = resetPasswordForm.querySelector('[type=submit]');
+      resetPasswordForm.dataset.busy = 'true'; resetPasswordForm.setAttribute('aria-busy', 'true');
+      button.disabled = true; button.textContent = 'Resetting Password...'; status.textContent = '';
+      try {
+        await auth.resetPassword(document.getElementById('resetNewPassword').value);
+        completed = true; resetPasswordForm.reset(); resetPasswordForm.hidden = true;
+        status.textContent = 'Your password has been reset successfully.';
+        returnButton.hidden = false; returnButton.focus();
+      } catch (error) {
+        if (!auth.hasRecoverySession()) {
+          resetPasswordForm.reset(); resetPasswordForm.hidden = true;
+          document.getElementById('resetInvalidLink').hidden = false;
+          status.textContent = 'This password reset link is invalid or expired. Please request a new one.';
+        } else status.textContent = auth.message(error);
+      } finally {
+        resetPasswordForm.dataset.busy = 'false'; resetPasswordForm.removeAttribute('aria-busy');
+        button.textContent = 'Reset Password'; updateSubmitState(resetPasswordForm);
+      }
+    });
+    returnButton.addEventListener('click', async () => {
+      returnButton.disabled = true;
+      try { await auth.finishRecovery(); window.location.href = 'index.html?login=1'; }
+      catch { status.textContent = 'Your password was reset, but we could not finish signing out. Check your connection and try returning to login again.'; }
+      finally { returnButton.disabled = false; }
+    });
+  }
 
   const accountFields = ['loginEmail', 'loginPassword', 'signupName', 'signupEmail', 'signupPassword', 'signupConfirmPassword'];
   accountFields.forEach(fieldId => {
@@ -1096,7 +1157,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     profileLogoutBtn.addEventListener('click', logoutUser);
   }
 
-  const renderProfileSection = (sectionName, skipLoadingState = false) => {
+  let profileRenderVersion = 0;
+  let addressLoadError = false;
+  const renderProfileSection = async (sectionName, skipLoadingState = false) => {
+    const version = ++profileRenderVersion;
     if (!accountSectionContent) return;
     const user = getCurrentUser();
 
@@ -1125,9 +1189,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const renderer = sectionMap[sectionName] || renderOrdersSection;
     if (!skipLoadingState) {
       showDynamicSkeleton(accountSectionContent, profileSkeleton(sectionName));
-      finishDynamicSkeleton(accountSectionContent, () => renderProfileSection(sectionName, true));
-      return;
+      addressLoadError = false;
+      await Promise.all([
+        new Promise(resolve => window.setTimeout(resolve, SKELETON_MIN_MS)),
+        sectionName === 'orders' ? Promise.resolve().then(() => orderService.listCustomer(user.id)).then(rows => {
+          if (version === profileRenderVersion && getCurrentUser()?.id === user.id) { customerOrderRows = rows; ordersLoadError = false; }
+        }).catch(() => { if (version === profileRenderVersion) { customerOrderRows = []; ordersLoadError = true; } }) :
+        sectionName === 'addresses' ? Promise.resolve().then(() => addressService.getAddresses({ refresh: true })).catch(() => { addressLoadError = true; }) : Promise.resolve()
+      ]);
+      if (version !== profileRenderVersion || getCurrentUser()?.id !== user.id) return;
     }
+    accountSectionContent.setAttribute('aria-busy', 'false');
     accountSectionContent.innerHTML = renderer();
     prepareImageSkeletons();
     bindProfileEvents();
@@ -1143,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   const renderOrdersSection = () => {
+    if (ordersLoadError) return '<div class="account-section active"><p role="status">We could not load your orders. Please check your connection.</p><button type="button" class="btn btn-outline-gold" id="retryOrders">Try Again</button></div>';
     const orders = getUserOrders();
     if (!orders.length) {
       return `
@@ -1160,31 +1233,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="account-order-list">
           ${orders.map((order, idx) => {
       const items = order.items || [];
-      const status = order.status || ['Processing', 'Shipped', 'Delivered'][idx % 3];
+      const status = order.status || 'Processing';
       const previewItems = items.slice(0, 3);
       return `
               <div class="account-order-card">
                 <div class="order-card-top">
                   <div>
-                    <div class="order-num">Order #${order.orderId || 'SE-0000'}</div>
+                    <div class="order-num">Order #${escapeHTML(order.orderId || 'SE-0000')}</div>
                     <div class="order-meta">
-                      <span>${order.orderDate || 'Date unavailable'}</span>
+                      <span>${escapeHTML(order.orderDate || 'Date unavailable')}</span>
                     </div>
                   </div>
-                  <span class="order-status-badge">${status}</span>
+                  <span class="order-status-badge">${escapeHTML(status)}</span>
                 </div>
 
                 <div class="order-items-preview">
                   ${previewItems.map(item => `
                     <div class="order-item-name">
-                      <img src="${item.img || 'https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=200&auto=format&fit=crop'}" class="order-item-thumb" alt="${escapeHTML(item.title)}">
+                      <img src="${escapeHTML(orderService.imageURL(item.img))}" class="order-item-thumb" alt="${escapeHTML(item.title)}">
                       <span>${escapeHTML(item.title)}</span>
                     </div>
                   `).join('')}
                 </div>
 
                 <div class="order-card-footer">
-                  <div class="order-total">Total: ${order.totalAmount || 'Rs. 0'}</div>
+                  <div class="order-total">Total: ${escapeHTML(order.totalAmount || 'Rs. 0')}</div>
                   <button type="button" class="order-expand-btn" data-order-index="${idx}">View details</button>
                 </div>
 
@@ -1192,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <div class="order-details-grid">
                     <div class="order-detail-box">
                       <span class="order-detail-label">Items</span>
-                      <div>${(items || []).map(item => `<div>${escapeHTML(item.title)} x${item.quantity}</div>`).join('')}</div>
+                      <div>${(items || []).map(item => `<div>${escapeHTML(item.title)} x${escapeHTML(String(item.quantity))}</div>`).join('')}</div>
                     </div>
                     <div class="order-detail-box">
                       <span class="order-detail-label">Shipping Address</span>
@@ -1310,6 +1383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const renderAddressesSection = () => {
+    if (addressLoadError) return '<div class="account-section active"><p role="status">We could not load your saved addresses.</p><button type="button" class="btn btn-outline-gold" id="retryAddresses">Try Again</button></div>';
     const addresses = getSavedAddresses();
     if (!addresses.length) {
       return `
@@ -1325,24 +1399,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `
       <div class="account-section active">
         <div class="account-address-list">
-          ${addresses.map((address, index) => `
-            <div class="account-address-card ${address.isDefault ? 'default-address' : ''}">
+          ${addresses.map(address => `
+            <div class="account-address-card ${address.is_default ? 'default-address' : ''}">
               <div class="address-card-header">
-                <span class="address-card-name">${escapeHTML(address.name)}</span>
-                ${address.isDefault ? '<span class="order-status-badge">Default</span>' : ''}
+                <span class="address-card-name">${escapeHTML(address.label || address.full_name)}</span>
+                ${address.is_default ? '<span class="order-status-badge">Default</span>' : ''}
               </div>
               <div class="address-card-body">
-                ${escapeHTML(address.address)}<br>
-                ${escapeHTML(address.city)} ${escapeHTML(address.postal)}<br>
+                ${address.label ? escapeHTML(address.full_name) + '<br>' : ''}
+                ${escapeHTML(address.address_line_1)}<br>
+                ${address.address_line_2 ? escapeHTML(address.address_line_2) + '<br>' : ''}
+                ${address.state_province ? escapeHTML(address.state_province) + '<br>' : ''}
+                ${escapeHTML(address.city)} ${escapeHTML(address.postal_code)}<br>
                 ${escapeHTML(address.country)}<br>
                 ${escapeHTML(address.phone)}
               </div>
               <div class="address-card-actions">
                 <div class="address-meta-actions">
-                  <button type="button" class="address-action-btn edit-address" data-index="${index}">Edit</button>
-                  <button type="button" class="address-action-btn delete-address" data-index="${index}">Delete</button>
+                  <button type="button" class="address-action-btn edit-address" data-address-id="${escapeHTML(address.id)}">Edit</button>
+                  <button type="button" class="address-action-btn delete-address" data-address-id="${escapeHTML(address.id)}">Delete</button>
                 </div>
-                <button type="button" class="default-address-btn set-default-address" data-index="${index}">${address.isDefault ? 'Default' : 'Set Default'}</button>
+                <button type="button" class="default-address-btn set-default-address" ${address.is_default ? 'disabled' : ''} data-address-id="${escapeHTML(address.id)}">${address.is_default ? 'Default' : 'Set Default'}</button>
               </div>
             </div>
           `).join('')}
@@ -1449,7 +1526,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const accountToast = document.getElementById('accountToast');
 
   const closeCancellationModal = () => {
-    if (!cancelOrderModal) return;
+    if (!cancelOrderModal || confirmCancellation?.disabled) return;
     cancelOrderModal.classList.remove('active');
     pendingCancellationOrder = null;
     document.body.style.overflow = '';
@@ -1484,24 +1561,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   if (confirmCancellation) {
-    confirmCancellation.addEventListener('click', () => {
-      if (!pendingCancellationOrder) return;
-      const orders = getFromStorage(STORAGE_KEYS.orders, []);
-      const storedOrder = orders.find(order => order.orderId === pendingCancellationOrder.orderId);
-      if (!storedOrder || (storedOrder.status && storedOrder.status !== 'Processing')) {
-        closeCancellationModal();
-        return;
+    confirmCancellation.addEventListener('click', async () => {
+      if (!pendingCancellationOrder || confirmCancellation.disabled) return;
+      const target = pendingCancellationOrder;
+      confirmCancellation.disabled = true; confirmCancellation.textContent = 'Cancelling...';
+      let cancelled = false;
+      try {
+        const updated = await orderService.cancel(target.id, getCurrentUser()?.id);
+        if (getCurrentUser()?.id !== updated.customerId) return;
+        customerOrderRows = customerOrderRows.map(order => order.id === updated.id ? updated : order);
+        cancelled = true;
+        await renderProfileSection('orders', true);
+        showAccountToast('Order cancelled successfully.');
+      } catch { showToast("We couldn't cancel this order. It may have changed; close this dialog and refresh Order History to try again.", 'error'); }
+      finally {
+        confirmCancellation.disabled = false; confirmCancellation.textContent = 'Confirm Cancellation';
+        if (cancelled) closeCancellationModal();
       }
-
-      storedOrder.status = 'Cancelled';
-      saveToStorage(STORAGE_KEYS.orders, orders);
-      closeCancellationModal();
-      renderProfileSection('orders');
-      showAccountToast('Order cancelled successfully.');
     });
   }
 
   const bindProfileEvents = () => {
+    document.getElementById('retryOrders')?.addEventListener('click', () => renderProfileSection('orders'));
     document.getElementById('retryProfileLoad')?.addEventListener('click', async event => {
       const button = event.currentTarget;
       button.disabled = true;
@@ -1562,42 +1643,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
+    document.getElementById('retryAddresses')?.addEventListener('click', () => renderProfileSection('addresses'));
     document.querySelectorAll('.edit-address').forEach(button => {
       button.addEventListener('click', () => {
-        const index = Number(button.dataset.index);
-        const addresses = getSavedAddresses();
-        const selected = addresses[index];
-        if (!selected) return;
-        openAddressModal(selected, index);
+        const selected = getSavedAddresses().find(row => row.id === button.dataset.addressId);
+        if (selected) openAddressModal(selected);
       });
     });
-
     document.querySelectorAll('.delete-address').forEach(button => {
-      button.addEventListener('click', () => {
-        const index = Number(button.dataset.index);
-        const addresses = getSavedAddresses();
-        addresses.splice(index, 1);
-        saveAddresses(addresses);
-        renderProfileSection('addresses');
-        showToast('Address deleted.');
-      });
+      button.addEventListener('click', () => openAddressDelete(button.dataset.addressId, button));
     });
-
     document.querySelectorAll('.set-default-address').forEach(button => {
-      button.addEventListener('click', () => {
-        const index = Number(button.dataset.index);
-        const addresses = getSavedAddresses();
-        addresses.forEach((item, i) => item.isDefault = i === index);
-        saveAddresses(addresses);
-        renderProfileSection('addresses');
-        showToast('Default address updated.');
+      button.addEventListener('click', async () => {
+        if (button.disabled) return;
+        button.disabled = true; button.textContent = 'Updating...';
+        try {
+          await addressService.setDefault(button.dataset.addressId);
+          await renderProfileSection('addresses', true);
+          showToast('Default address updated.');
+        } catch { showToast(addressService.message('update'), 'error'); }
+        finally { button.disabled = false; button.textContent = 'Set Default'; }
       });
     });
-
-    const openAddressButton = document.getElementById('openAddressModalBtn');
-    if (openAddressButton) {
-      openAddressButton.addEventListener('click', () => openAddressModal());
-    }
+    document.getElementById('openAddressModalBtn')?.addEventListener('click', () => openAddressModal());
 
     const settingsForm = document.getElementById('accountSettingsForm');
     if (settingsForm) {
@@ -1672,95 +1740,95 @@ document.addEventListener('DOMContentLoaded', async () => {
   const addressModalClose = document.getElementById('addressModalClose');
   const addressForm = document.getElementById('addressForm');
 
-  const openAddressModal = (address = null, index = null) => {
-    if (!addressModal) return;
-    const form = document.getElementById('addressForm');
-    if (!form) return;
-
-    if (address) {
-      document.getElementById('addressName').value = address.name || '';
-      document.getElementById('addressText').value = address.address || '';
-      document.getElementById('addressCity').value = address.city || '';
-      document.getElementById('addressPostal').value = address.postal || '';
-      document.getElementById('addressCountry').value = address.country || 'Pakistan';
-      document.getElementById('addressPhone').value = address.phone || '';
-      form.dataset.editIndex = index;
-    } else {
-      form.reset();
-      document.getElementById('addressCountry').value = 'Pakistan';
-      delete form.dataset.editIndex;
-    }
-
+  let addressFocusReturn = null;
+  const addressFields = { addressLabel: 'label', addressName: 'full_name', addressPhone: 'phone', addressText: 'address_line_1', addressLine2: 'address_line_2', addressCity: 'city', addressState: 'state_province', addressPostal: 'postal_code', addressCountry: 'country' };
+  const openAddressModal = (address = null) => {
+    if (!addressModal || !getCurrentUser()) return;
+    addressFocusReturn = document.activeElement;
+    addressForm.reset();
+    addressForm.dataset.addressId = address?.id || '';
+    addressForm.dataset.ownerId = getCurrentUser().id;
+    for (const [id, key] of Object.entries(addressFields)) document.getElementById(id).value = address?.[key] || (id === 'addressCountry' ? 'Pakistan' : '');
+    document.getElementById('addressDefault').checked = address?.is_default || !getSavedAddresses().length;
     clearValidationErrors('addressForm');
+    initializeFormValidation(addressForm);
     addressModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    document.getElementById('addressLabel').focus();
   };
-
   const closeAddressModal = () => {
-    if (addressModal) {
-      addressModal.classList.remove('active');
-      document.body.style.overflow = '';
-    }
+    if (addressForm?.dataset.busy === 'true') return;
+    addressModal?.classList.remove('active');
+    document.body.style.overflow = '';
+    addressFocusReturn?.focus();
   };
+  addressModalClose?.addEventListener('click', closeAddressModal);
+  addressModal?.addEventListener('click', event => { if (event.target === addressModal) closeAddressModal(); });
+  addressForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (addressForm.dataset.busy === 'true' || !formIsValid(addressForm)) return;
+    if (getCurrentUser()?.id !== addressForm.dataset.ownerId) { closeAddressModal(); return; }
+    const values = {};
+    for (const [id, key] of Object.entries(addressFields)) values[key] = document.getElementById(id).value.trim();
+    values.is_default = document.getElementById('addressDefault').checked;
+    const id = addressForm.dataset.addressId || null;
+    const button = addressForm.querySelector('[type="submit"]');
+    addressForm.dataset.busy = 'true'; addressForm.setAttribute('aria-busy', 'true');
+    button.disabled = true; button.textContent = 'Saving...';
+    let saved = false;
+    try {
+      await addressService.save(values, id);
+      saved = true;
+      await renderProfileSection('addresses', true);
+      showToast(id ? 'Address updated successfully.' : 'Address added successfully.');
+    } catch { showToast(addressService.message(id ? 'update' : 'save'), 'error'); }
+    finally {
+      delete addressForm.dataset.busy; addressForm.setAttribute('aria-busy', 'false');
+      button.textContent = 'Save Address'; updateSubmitState(addressForm);
+      if (saved) { closeAddressModal(); document.getElementById('openAddressModalBtn')?.focus(); }
+    }
+  });
+  const addressDeleteModal = document.getElementById('addressDeleteModal');
+  const addressDeleteConfirm = document.getElementById('addressDeleteConfirm');
+  let addressDeleteId = null;
+  const closeAddressDelete = () => {
+    if (addressDeleteConfirm?.disabled) return;
+    addressDeleteModal?.classList.remove('active'); document.body.style.overflow = '';
+    addressFocusReturn?.focus(); addressDeleteId = null;
+  };
+  const openAddressDelete = (id, trigger) => {
+    addressDeleteId = id; addressFocusReturn = trigger;
+    addressDeleteModal.classList.add('active'); document.body.style.overflow = 'hidden';
+    document.getElementById('addressDeleteCancel').focus();
+  };
+  document.getElementById('addressDeleteCancel')?.addEventListener('click', closeAddressDelete);
+  document.getElementById('addressDeleteClose')?.addEventListener('click', closeAddressDelete);
+  addressDeleteModal?.addEventListener('click', event => { if (event.target === addressDeleteModal) closeAddressDelete(); });
+  addressDeleteConfirm?.addEventListener('click', async () => {
+    if (!addressDeleteId || addressDeleteConfirm.disabled) return;
+    addressDeleteConfirm.disabled = true; addressDeleteConfirm.textContent = 'Deleting...';
+    let deleted = false;
+    try {
+      await addressService.remove(addressDeleteId); deleted = true;
+      await renderProfileSection('addresses', true); showToast('Address deleted.');
+    } catch { showToast(addressService.message('delete'), 'error'); }
+    finally {
+      addressDeleteConfirm.disabled = false; addressDeleteConfirm.textContent = 'Delete Address';
+      if (deleted) { closeAddressDelete(); document.getElementById('openAddressModalBtn')?.focus(); }
+    }
+  });
+  document.addEventListener('keydown', event => {
+    const modal = [addressModal, addressDeleteModal].find(item => item?.classList.contains('active'));
+    if (!modal) return;
+    if (event.key === 'Escape') { event.preventDefault(); modal === addressModal ? closeAddressModal() : closeAddressDelete(); }
+    if (event.key === 'Tab') {
+      const controls = [...modal.querySelectorAll('button:not(:disabled), input, select, textarea')];
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+  });
 
-  if (addressModalClose && addressModal) {
-    addressModalClose.addEventListener('click', closeAddressModal);
-    addressModal.addEventListener('click', (e) => {
-      if (e.target === addressModal) closeAddressModal();
-    });
-  }
-
-  if (addressForm) {
-    addressForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      clearValidationErrors('addressForm');
-
-      const name = document.getElementById('addressName')?.value.trim() || '';
-      const addressValue = document.getElementById('addressText')?.value.trim() || '';
-      const city = document.getElementById('addressCity')?.value.trim() || '';
-      const postal = document.getElementById('addressPostal')?.value.trim() || '';
-      const country = document.getElementById('addressCountry')?.value || 'Pakistan';
-      const phone = document.getElementById('addressPhone')?.value.trim() || '';
-
-      let valid = true;
-      if (!name) {
-        valid = false;
-        showValidationError('addressName', 'Full name is required.');
-      }
-      if (!addressValue) {
-        valid = false;
-        showValidationError('addressText', 'Address is required.');
-      }
-      if (!city) {
-        valid = false;
-        showValidationError('addressCity', 'City is required.');
-      }
-      if (!postal) {
-        valid = false;
-        showValidationError('addressPostal', 'Postal code is required.');
-      }
-      if (!phone) {
-        valid = false;
-        showValidationError('addressPhone', 'Phone is required.');
-      }
-
-      if (!valid) return;
-
-      const draft = { name, address: addressValue, city, postal, country, phone, isDefault: false };
-      const addresses = getSavedAddresses();
-      const isEditing = addressForm.dataset.editIndex !== undefined;
-      if (isEditing) {
-        addresses[Number(addressForm.dataset.editIndex)] = draft;
-      } else {
-        if (!addresses.length) draft.isDefault = true;
-        addresses.push(draft);
-      }
-      saveAddresses(addresses);
-      closeAddressModal();
-      renderProfileSection('addresses');
-      showToast(isEditing ? 'Address updated successfully.' : 'Address added successfully.');
-    });
-  }
 
   // 5. Artwork Quick View Modal
   if (!document.getElementById('quickViewModal')) {
@@ -1813,6 +1881,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalImg.alt = title;
           }
 
+          quickViewModal.dataset.productId = card.dataset.productId || '';
           quickViewModal.classList.add('active');
           document.body.style.overflow = 'hidden';
         }
@@ -1984,6 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       cart[existingIndex].quantity += 1;
     } else {
       cart.push({
+        productId: itemData.productId || itemData.product_id || null,
         id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         title: itemData.title,
         category: itemData.category || 'Hand Embroidery',
@@ -2018,7 +2088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         title: modalTitle,
         category: modalCategory,
         price: modalPrice,
-        img: modalImg
+        img: modalImg, productId: quickViewModalEl?.dataset.productId || null
       });
       if (added) showToast('Added ' + escapeHTML(modalTitle) + ' to your cart.', 'success');
     });
@@ -2034,7 +2104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const category = card.getAttribute('data-category') || card.querySelector('.artwork-category')?.textContent || '';
           const price = card.getAttribute('data-price') || card.querySelector('.artwork-price')?.textContent || '';
           const img = card.querySelector('.artwork-img')?.src || '';
-          const added = addToCart({ title, category, price, img });
+          const added = addToCart({ title, category, price, img, productId: card.dataset.productId || null });
           if (added) showToast('Added ' + escapeHTML(title) + ' to your cart.', 'success');
         };
 
@@ -2378,8 +2448,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       if (checkoutForm.dataset.busy === 'true') return;
       checkoutForm.dataset.busy = 'true';
+      checkoutForm.setAttribute('aria-busy', 'true');
+      const submit = checkoutForm.querySelector('[type=submit]');
+      submit.disabled = true; submit.textContent = 'Placing Order...';
+      try {
       await auth.refresh();
-      checkoutForm.dataset.busy = 'false';
 
       if (!getCurrentUser()) {
         saveCheckoutFormForAuthentication();
@@ -2474,53 +2547,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalAmount: formatPrice(numericSubtotal)
       };
 
-      processPayment(orderData);
+      await processPayment(orderData);
+      } finally {
+        checkoutForm.dataset.busy = 'false'; checkoutForm.setAttribute('aria-busy', 'false');
+        submit.textContent = 'Place Order'; updateSubmitState(checkoutForm);
+      }
     });
   }
 
-  // Payment Processing Stub (Simulated Success & Gateway Integration Point)
-  const processPayment = (orderData) => {
-    /* =========================================================================
-       PAYMENT GATEWAY & BACKEND INTEGRATION POINT
-       In production with backend (PHP/MySQL) or Gateway SDK (Stripe/PayFast):
-       1. Send POST request to backend API: fetch('api/checkout.php', { method: 'POST', body: JSON.stringify(orderData) })
-       2. On gateway success response, store order record in MySQL database.
-       3. Clear cart and redirect.
-       ========================================================================= */
-
-    // Store completed order in localStorage
-    let storageOk = true;
+  // Database persistence only. Online payment remains the existing simulated gateway.
+  const processPayment = async (orderData) => {
+    let saved;
+    try { saved = await orderService.place(orderData); }
+    catch (error) { showToast(orderService.message(error), 'error'); return; }
+    // Preserve the receipt contract; never use a local-only receipt as proof of a saved order.
     try {
-      localStorage.setItem('shah_last_order', JSON.stringify(orderData));
-    } catch (e) {
-      storageOk = false;
-    }
-    const allOrders = getFromStorage(STORAGE_KEYS.orders, []);
-    const updatedOrders = [orderData, ...allOrders];
-    if (!saveToStorage(STORAGE_KEYS.orders, updatedOrders)) storageOk = false;
-
-    // Clear shopping cart
-    try {
+      localStorage.setItem('shah_last_order', JSON.stringify(saved));
       localStorage.removeItem('shah_cart');
-    } catch (e) {
-      storageOk = false;
-    }
-    updateCartBadge();
-
-    if (!storageOk) {
-      showToast("We couldn't save your order to this browser — please try again.", 'error');
+    } catch {
+      showToast('Your order was saved, but this browser could not finish checkout. Enable browser storage and retry; the same order will be reused.', 'error');
       return;
     }
-
-    if (checkoutModal) {
-      closeCheckoutModal();
-      openConfirmationModal();
-    } else {
-      window.location.href = 'order-confirmation.html';
-    }
+    try { orderService.complete(saved.customerId); } catch { /* A saved attempt remains safely reusable. */ }
+    updateCartBadge();
+    if (checkoutModal) { closeCheckoutModal(); openConfirmationModal(); }
+    else window.location.href = 'order-confirmation.html';
   };
 
   const resumeConfirmedAuthentication = () => {
+    if (new URLSearchParams(location.search).get('reset') === '1') return;
     if (!getCurrentUser() || accountModal?.querySelector('form[data-busy="true"]')) return;
     // The SDK processes the confirmation URL before getSession/getUser resolve.
     // Leave ordinary confirmations on the homepage; only resume a saved local intent.
@@ -2545,6 +2600,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderWishlistButtons();
     }
     if (previousCustomerId && nextId !== previousCustomerId && (isProfilePage || isCheckoutPage)) {
+      profileRenderVersion++; customerOrderRows = [];
+      cancelOrderModal?.classList.remove('active');
+      addressModal?.classList.remove('active');
+      addressDeleteModal?.classList.remove('active');
       if (profilePage) { profilePage.classList.remove('visible'); accountSectionContent.replaceChildren(); }
       if (isCheckoutPage) {
         saveCheckoutFormForAuthentication();
@@ -2562,6 +2621,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setAuthView('login');
     openAuthModal();
   }
+  if (new URLSearchParams(location.search).get('reset') === '1') {
+    setAuthView('reset'); openAuthModal();
+  }
 
   if (isProfilePage) {
     if (!getCurrentUser()) {
@@ -2573,7 +2635,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('profileLoading')?.remove();
       profilePage.classList.add('visible');
     }
-    const initialProfileSection = window.location.hash === '#custom-orders' ? 'custom-orders' : 'orders';
+    const initialProfileSection = ['#custom-orders', '#addresses'].includes(window.location.hash) ? window.location.hash.slice(1) : 'orders';
     renderProfileSection(initialProfileSection);
   }
 

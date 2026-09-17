@@ -40,3 +40,11 @@ td img { width: 48px; height: 48px; min-width: 48px; object-fit: cover; border-r
 button:disabled { opacity: .5; cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--accent-gold); outline-offset: 3px; }
 @media (max-width: 620px) { .admin-form-grid { grid-template-columns: 1fr; } .admin-shell { margin-top: 20px; } .admin-header { align-items: flex-start; } }
+
+.admin-order-status { display: flex; align-items: center; gap: 8px; min-width: 230px; }
+#adminOrdersPanel button, #adminOrdersPanel select { min-height: 44px; }
+.admin-order-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding: 12px 0; overflow-wrap: anywhere; }
+.admin-order-details h3 { margin-bottom: 10px; font-size: 1rem; }
+.admin-order-details p { line-height: 1.8; }
+.admin-order-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+@media (max-width: 620px) { .admin-order-details { grid-template-columns: 1fr; } }

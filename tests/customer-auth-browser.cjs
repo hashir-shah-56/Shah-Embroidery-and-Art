@@ -162,7 +162,8 @@ async function runCustomerAuthTests() {
     assert.equal(await page.evaluate(() => fixture.redirect), base + '/');
     assert.equal(await page.evaluate(() => fixture.passwordUnmodified), true);
     console.log('PASS: validation, generic errors, network recovery, confirmation-required signup');
-    const cart = [{ title: 'Test Art', category: 'Hoop Art', price: 'Rs. 500', numericPrice: 500, quantity: 2, img: '' }];
+    // Use a real local image so blocked external image fallbacks cannot stall navigation.
+    const cart = [{ title: 'Test Art', category: 'Hoop Art', price: 'Rs. 500', numericPrice: 500, quantity: 2, img: 'Images/Logo.png' }];
     await page.evaluate(value => localStorage.setItem('shah_cart', JSON.stringify(value)), cart);
     await goto('cart.html'); await page.locator('#btnProceedToCheckout').click();
     await page.locator('#authModal.active').waitFor();

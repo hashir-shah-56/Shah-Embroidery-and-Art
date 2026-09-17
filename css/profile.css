@@ -407,6 +407,30 @@
 
 .account-address-card {
   padding: 18px 20px;
+  overflow-wrap: anywhere;
+}
+
+#addressModal .modal-container,
+#addressDeleteModal .modal-container {
+  max-height: calc(100dvh - 40px);
+  overscroll-behavior: contain;
+}
+
+.address-default-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-bottom: 12px;
+}
+
+.address-default-choice input { width: 20px; height: 20px; accent-color: var(--accent-gold); }
+#addressForm [type="submit"] { min-height: 48px; }
+.address-card-actions { flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  #addressModal, #addressDeleteModal,
+  #addressModal .modal-container, #addressDeleteModal .modal-container { transition: none; }
 }
 
 .address-card-header {

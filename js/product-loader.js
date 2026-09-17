@@ -16,7 +16,7 @@ function createProductCardHTML(product) {
     : `<div class="artwork-price">${priceAttr}</div>`;
 
   return `
-    <div class="artwork-card" data-title="${product.title}" data-category="${product.category}" data-price="${priceAttr}" data-description="${descriptionAttr}">
+    <div class="artwork-card" data-product-id="${/^\d+$/.test(String(product.id)) ? product.id : ''}" data-title="${product.title}" data-category="${product.category}" data-price="${priceAttr}" data-description="${descriptionAttr}">
       <div class="artwork-img-box">
         ${badgeHTML}
         <img src="${product.image_url}" alt="${product.title}" class="artwork-img"

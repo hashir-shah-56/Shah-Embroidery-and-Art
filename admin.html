@@ -40,6 +40,15 @@
         <div class="admin-table-wrap" tabindex="0" role="region" aria-label="Products table"><table><thead><tr><th scope="col">Image</th><th scope="col">Title</th><th scope="col">Category</th><th scope="col">Price</th><th scope="col">In Stock</th><th scope="col">Actions</th></tr></thead><tbody id="productsBody"></tbody></table></div>
         <div class="admin-pagination"><button id="previousPage" class="btn btn-outline" type="button" disabled>Previous</button><span id="pageStatus" role="status"></span><button id="nextPage" class="btn btn-outline" type="button" disabled>Next</button></div>
       </section>
+      <section class="admin-panel" id="adminOrdersPanel" aria-labelledby="ordersHeading">
+        <div class="admin-section-header"><h2 id="ordersHeading">Order Management</h2><button id="refreshOrders" class="btn btn-outline" type="button">Refresh Orders</button></div>
+        <p id="ordersError" class="form-error-text" role="alert"></p>
+        <div class="admin-table-wrap" tabindex="0" role="region" aria-label="Customer orders table"><table>
+          <thead><tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Date</th><th scope="col">Total</th><th scope="col">Items</th><th scope="col">Status</th><th scope="col">Details</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table></div>
+        <div class="admin-pagination"><button id="previousOrdersPage" class="btn btn-outline" type="button" disabled>Previous</button><span id="ordersPageStatus" role="status"></span><button id="nextOrdersPage" class="btn btn-outline" type="button" disabled>Next</button></div>
+      </section>
     </main>
   </div>
   <div id="deleteModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteHeading" aria-describedby="deleteMessage" hidden>
@@ -50,6 +59,8 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/product-loader.js"></script>
   <script src="js/admin-config.js"></script>
+  <script src="js/order-service.js"></script>
+  <script src="js/admin-orders.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

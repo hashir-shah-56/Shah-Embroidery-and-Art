@@ -15,7 +15,7 @@ Welcome to the official repository for **Shah Embroidery & Art**. This document 
 - **Brand Vision:** Combining traditional needlework heritage with contemporary artistic elegance. Specializing in handmade floral embroidery, custom bridal hoops, Islamic calligraphic threadwork, and personalized portrait embroidery.
 - **Site Purpose:** High-end business and service website showcasing past works, accepting custom order requests, providing itemized artwork exploration, and executing a complete front-end e-commerce shopping cart & multi-step checkout workflow.
 - **Tech Stack:**
-  - **Customer backend (Phases 1–2):** Supabase Auth and persistent customer profiles linked to `auth.users.id`. Profile names/phones come from `public.profiles`; email/password changes use Auth. Commerce datasets remain browser-local.
+  - **Customer backend:** Supabase Auth, persistent customer profiles, saved addresses, orders, and order items linked to `auth.users.id`. Profile names/phones come from `public.profiles`; email/password changes use Auth. Cart, wishlist, and custom requests remain browser-local; `shah_last_order` remains a receipt cache.
   - **Core:** HTML5, Modular Vanilla CSS3, Vanilla JavaScript (ES6+)
   - **Typography & Icons:** Google Fonts (`Cormorant Garamond` & `Plus Jakarta Sans`), Font Awesome 6 Free
   - **Tooling & Build System:** Google Antigravity Agentic IDE
@@ -109,6 +109,7 @@ Shah Embroidery/
 ├── checkout.html                        # Standalone checkout page
 ├── order-confirmation.html              # Standalone order confirmation page
 ├── profile.html                         # Authenticated account profile page
+├── reset-password.html                  # Recovery-event-gated password reset page with standard navbar/footer
 ├── custom-order.html                    # Standalone custom order request page
 ├── 404.html                             # Custom "page not found" error page (root level ⇒ auto-served by Netlify)
 ├── README.md                            # Comprehensive project documentation (This file)
@@ -155,6 +156,9 @@ Shah Embroidery/
     ├── script.js                        # Master JavaScript bundle handling shared site interactivity
     ├── supabase-client.js               # Shared Supabase client configuration & initialization
     ├── auth.js                          # Validated identity, cached profiles, self-healing, saves and contact prefill
+    ├── address-service.js               # Own-customer address queries, transactional CRUD/default RPC, memory cache
+    ├── order-service.js                 # Validated customer/owner order queries, inserts, retries and status changes
+    ├── admin-orders.js                  # Isolated admin order table, details, status controls and pagination
     ├── product-loader.js                # Shared product card renderer & Supabase catalog loader
     ├── shop.js                          # Shop queries, URL state, skeleton loading & pagination controls
     └── custom-order.js                  # Standalone custom order form and upload preview flow
@@ -163,6 +167,12 @@ Shah Embroidery/
 ---
 
 Additional migration files: `supabase/customer-auth.sql` supplies the existing customer table/RLS setup, reused unchanged for Phase 2. `tests/customer-auth-browser.cjs` provides auth regressions and the shared test fixture; `tests/customer-profiles-browser.cjs` covers profile/settings, prefill, and responsive behavior; `tests/customer-profiles-sql.cjs` executes the actual setup SQL and authorization checks in a temporary local PostgreSQL engine. No duplicate profile migration or creation trigger is needed.
+
+Phase 3 adds `supabase/customer-addresses.sql`, `tests/customer-addresses-browser.cjs`, and `tests/customer-addresses-sql.cjs`. The shared address service is loaded only by `profile.html` and `checkout.html`; UI bindings remain in `js/script.js`, with scoped address styling in `css/profile.css`.
+
+Order migration adds `supabase/order-cancellation.sql`, `tests/orders-browser.cjs`, and `tests/orders-sql.cjs`. `js/order-service.js` is loaded by checkout, profile, and admin; `js/admin-orders.js` is loaded only by admin. Existing order tables are reused without recreation. Product cards pass their database ID into new cart entries when available.
+
+Password recovery uses the existing `js/auth.js` service/listener, modal and validation bindings in `js/script.js`, scoped token-based styles in `css/modals.css`, and `tests/password-recovery-browser.cjs`. No password table, SQL migration, or additional Auth listener is introduced.
 
 ## 4. Page-by-Page / Section-by-Section Functionality
 
@@ -285,7 +295,9 @@ Product categories are fully dynamic and driven entirely by real category names 
      - **Credit / Debit Card (Pay Online):** Simulated gateway interface with card number and CVC fields (placeholder for future gateway SDK).
   4. **Read-Only Order Summary Sidebar:** Live itemized recap, shipping status, and estimated total price.
 - **Validation:** Validates required fields, phone numbers, and email format before processing.
-- **Contact prefill:** Restores pending checkout data first, then fills empty name/email/phone fields from the shared Supabase profile/Auth state, followed by remaining saved-address fields. Manual edits and the restored country selector are preserved. Cart, order, and address storage remain local.
+- **Contact/address prefill:** Restores pending checkout data first, then fills empty name/email/phone fields from Supabase profile/Auth state. A single shared query loads the current customer's Supabase addresses and fills empty delivery fields from the default. Address line 2 and province join the existing street field. Typed values, explicitly cleared fields, and restored country values are preserved during slow loading. Country defaults to Pakistan only when no saved/restored/typed country applies. Load failures offer Retry and leave manual entry usable.
+- **Saved-address selection:** The audited checkout has no address selector or “Save this address” checkbox; Phase 3 preserves that UI. Change the default under Profile → Saved Addresses before opening checkout, or enter a one-time delivery address directly. Checkout never saves/updates an address implicitly. Cart persistence remains local.
+- **Order placement:** Revalidates the customer through `auth.getUser()`, inserts an own-UUID `Processing` order with `SE-XXXXX` number and shipping/contact totals, then inserts every cart item against the returned order ID. `Placing Order...` and a disabled submit prevent duplicate submissions. Only after both steps succeed does it cache the existing receipt shape in `shah_last_order`, clear `shah_cart`, and redirect to the unchanged confirmation page. A failure shows a toast and retains the cart. Same-tab retries use stable request IDs, including after refresh; see the two-request limitation below.
 
 ### 20. Order Confirmation Modal (`#confirmationModal`)
 - **Description:** Post-checkout modal featuring a green success checkmark badge, generated Order ID (`#SE-XXXXX`), full receipt breakdown card, customer shipping address, payment method instructions, email confirmation notice, and a *Return to Homepage* CTA button.
@@ -295,9 +307,21 @@ Product categories are fully dynamic and driven entirely by real category names 
 ### 21. Customer Profile (`profile.html`)
 - Shows a neutral loading status/skeleton before protected account content. The shared helper verifies the session, fetches the current UUID's profile, and safely creates a missing row from Auth metadata/email. Legacy account values are never displayed or imported.
 - Account Settings loads database name/phone and the Auth email. Failed profile loads show a retry action. Saving validates all settings fields, displays `Saving...` with `aria-busy`, prevents duplicate writes, and retains entries on failure. Success refreshes the cache, header, avatar, and saved values without replacing the form.
-- Existing sidebar/mobile tabs and local orders, wishlist, addresses, and custom-request sections remain intact.
+- Saved Addresses fetches the signed-in customer's database rows, default first then newest updated, with loading skeletons, retry, and the existing empty state. Add/Edit retains the form/card design and supports an optional label, second address line, province, and default checkbox. Country suggestions accept other country names. Delete uses the site's custom confirmation pattern. All actions show progress and unified feedback; failed edits retain entered values. Sidebar/mobile tabs and local wishlist/custom requests remain intact.
+- Order History queries `orders` with nested `order_items`, filtered by the validated customer's UUID, newest first. Existing cards, thumbnails, expandable details, status badges, and empty state are preserved. The existing skeleton covers loading; failures offer Try Again. Cancel Order updates only the current customer's still-Processing row; stale status changes are rejected and failures leave the confirmation recoverable. No legacy orders are read or automatically imported.
+
+### 22. Password Recovery (`reset-password.html`)
+
+- Standard navbar, mobile drawer, footer, and a centered card using the existing background/radius/shadow tokens. Password fields, strength meter, inline validation, and accessible status messages reuse customer auth styling.
+- Starts with a link-checking state, shows the form only for a verified recovery event, and otherwise offers a new-link request. Successful updates show confirmation and a return-to-login action. Admin routes/auth and commerce persistence are unchanged.
 
 ## 5. Functionality & Feature List
+
+- [x] **Forgot Password:** Same-modal email reset request, generic confirmation, standalone recovery page, shared password validation/strength meter, error recovery, and return to login. Requires the manual recovery redirect allowlist and working Auth email delivery.
+
+- [x] **Supabase Orders and Admin Management:** Database order/item creation, customer history and cancellation, owner-only order details/status management with 25-row pagination. Confirmation continues using its existing local receipt cache. Requires the supplied table policies and the cancellation supplement below.
+
+- [x] **Persistent Saved Addresses (Phase 3):** Supabase UUID ownership, own-row CRUD/RLS, transactional default handling, first-address default, deletion promotion, profile management, and non-overwriting checkout prefill. Requires the new SQL setup below.
 
 - [x] **Persistent Customer Profiles (Phase 2):** Database-backed account details/settings, missing-profile recovery, cached display state, Auth email/password changes, and non-overwriting checkout/custom-order contact prefill.
 
@@ -317,7 +341,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 - [x] **Payment Method Toggling:** Interactive selection between COD, Direct Bank Transfer (Meezan Bank details), and Mock Card Online Payment.
 - [x] **Order Receipt Generation:** Automatic generation of order ID `#SE-XXXXX`, receipt card breakdown, and date stamping in `localStorage` (`shah_last_order`).
 - [x] **Scroll Reveal Animations:** `IntersectionObserver`-powered fade-in-up animations for cards and sections.
-- [x] **Standalone Cart, Checkout & Confirmation:** Cart, checkout, and order confirmation now use dedicated pages backed by the shared localStorage flow.
+- [x] **Standalone Cart, Checkout & Confirmation:** Dedicated pages use a local cart, Supabase order persistence, and the existing local confirmation receipt cache.
 - [x] **Checkout Authentication:** Only Proceed to Checkout, checkout submission, and direct checkout visits require an active login session; the guest cart remains intact through authentication.
 - [x] **Order Cancellation:** Processing orders can be cancelled from expanded Order History details after confirmation; cancelled orders are persisted and no longer show the action.
 - [x] **Profile Wishlist Navigation:** Empty wishlist, order, and custom-order states link back to `index.html#gallery` with the label `Browse Collections`.
@@ -330,7 +354,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 > [!WARNING]
 > **CURRENT FRONT-END SCOPE & GAPS**
-> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, and persistent profiles. Cart, wishlist, orders, saved addresses, and custom requests remain browser-local and require future database migration. Local records are editable by the browser user and are not server-verified orders or authorization evidence.
+> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, profiles, saved addresses, orders, and order items. Cart, wishlist, and custom requests still require database migration. Legacy `shah_orders` is ignored, retained, and never imported; `shah_last_order` is only a receipt cache. Address setup and the order-cancellation supplement require manual SQL deployment; local tests do not prove live configuration.
 > 2. **Simulated Payment Gateway:** The *Pay Online (Credit / Debit Card)* option is currently a mock UI placeholder. Real transaction processing via gateways (e.g., JazzCash, Easypaisa, PayFast, Stripe) is not yet integrated.
 > 3. **No Order Email Dispatch:** The receipt notification remains a simulation. Supabase Auth confirmation emails are separate and depend on dashboard/email-provider configuration.
 > 4. **Manual Bank Verification:** Direct Bank Transfer requires manual verification by having the user send their payment screenshot via WhatsApp.
@@ -341,6 +365,9 @@ Product categories are fully dynamic and driven entirely by real category names 
 > 9. **Font Fallbacks in Effect:** Declared webfonts (Cormorant Garamond / Plus Jakarta Sans) are not bundled or hot-linked; browsers silently fall back to Georgia / system sans-serif. Load the families (self-host or Google Fonts) to activate the intended typography.
 > 10. **Product Loading Fallback:** Featured cards retain their hardcoded content if the Supabase query fails or returns no rows.
 > 11. **Currency Display:** Prices now display as PKR (`Rs.`) without exchange-rate conversion. Historical order records retain the currency-formatted string stored when each order was created.
+> 12. **Two-request order creation:** The requested header-then-items API flow is not an atomic database transaction. An item failure can leave an unfinished Processing header. A tab-local `sessionStorage` retry journal reuses order/item UUIDs after failures, lost responses, and refreshes. Changed cart/contact details require retrying the original details or cancelling that unfinished order first. Closing the tab can discard this journal; unfinished headers then need review. Admin details warn against fulfilling rows without items. A transactional server-side order RPC is future work.
+> 13. **Order validation and payment:** Ownership is enforced by RLS, but the supplied insert policies accept customer-provided prices, totals, and item snapshots. They do not prove catalog pricing, payment, or stock availability. Treat totals as unverified until server-side pricing/inventory/payment validation is implemented. No card fields or credentials are written to order tables.
+> 14. **Password recovery deployment:** Add the production/local `reset-password.html` URLs to Supabase's redirect allowlist and deploy the page before sending reset emails. Email delivery, provider limits, and expiry depend on Auth configuration. Local mocked tests do not establish actual delivery or successful login with a changed live password.
 
 ---
 
@@ -355,16 +382,33 @@ Product categories are fully dynamic and driven entirely by real category names 
 - **Logout:** Uses `supabase.auth.signOut()` and preserves all local commerce data. Customer and admin pages share the existing SDK session, so signing out also ends that shared login. Admin privileges still require owner UUID validation and RLS.
 - **Legacy storage:** Application code neither reads nor writes `shah_users` or `shah_current_user` for identity. Existing keys remain inert and may be manually removed without removing commerce data. Application code no longer hashes or stores passwords.
 
+#### Forgot Password
+
+The customer login modal includes **Forgot password?** directly below the password field. It switches the same modal to a single-email request form with **Send Reset Link** and **Back to Login**, preserving checkout intent and cart data. Email is trimmed/lowercased and validated with the shared rules. The shared helper calls `auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password.html' })`. Pending requests disable the submit button and show `Sending...`; service/network failures permit retry. Every successful request shows exactly: “If an account exists for this email, a password reset link has been sent. Please check your inbox.”
+
+The existing single Auth listener captures `PASSWORD_RECOVERY` on the reset page; its in-memory recovery identity must match a server-validated `getUser()` result before the form becomes usable. A normal login session or a URL fragment alone does not unlock this UI. Direct visits, expired links, and session changes show an invalid/expired state with a homepage link that opens the reset-request view (`index.html?reset=1`). Recovery state is not stored by the application: refreshing after the SDK consumes a link requires requesting a fresh link. Supabase remains the authority for password updates; this page gate is not a replacement for Auth security.
+
+New passwords use the same 8-character/uppercase/lowercase/number rules, live strength meter, and matching confirmation as signup/settings. Submit revalidates identity and calls `auth.updateUser({ password })`; no old password is needed and no password/hash is written to profiles or browser storage. Failures retain the user's typed fields in the current form without programmatically refilling them. Success clears them and shows “Your password has been reset successfully.” **Return to Homepage & Log In** signs out the current browser session (`scope: local`) and opens the existing login modal. A sign-out failure is distinguished from a failed password update and can be retried. Cart and pending checkout fields remain intact.
+
+**Required manual configuration:** Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**:
+
+- Add `https://shah-embroidery-and-art.netlify.app/reset-password.html`.
+- For the documented local server, add `http://127.0.0.1:4173/reset-password.html`. If using another hostname/port, add that actual origin plus `/reset-password.html`; localhost and 127.0.0.1 are distinct origins.
+- Deploy `reset-password.html` and keep the development server running for local links. Leave existing signup-confirmation settings unchanged. In **Email Templates → Reset Password**, retain a verification link based on `{{ .ConfirmationURL }}`; a plain SiteURL/RedirectTo link does not verify a recovery token. Auth email delivery must be configured. No dashboard settings or email templates were changed by this task. See [Supabase password recovery](https://supabase.com/docs/guides/auth/passwords).
+
+After setup, request a fresh link for a test account you control, verify its inbox delivery, follow it to the reset form, change the password, return to login, and verify the new password works. Also test expired links and a direct visit in a fresh browser session. These live email/password steps require account/inbox access; the isolated browser suite tests SDK contracts and UI states without sending emails.
+
 ### Profile Page Structure
 - **Source of truth and caching:** `public.profiles` owns full_name, phone, and profile timestamps. Email is authoritative in Auth and mirrored to the row; passwords never enter the profile table. `js/auth.js` holds one in-memory profile, returns copies to consumers, and reuses it for up to 60 seconds during routine identity checks. Reload, explicit retry, restored browser history, and Auth user updates refresh the row. A failed fetch clears display data and uses the Auth email initial, never legacy storage or stale metadata for the navbar.
 - **Five sections:** Order History, Custom Order Tracking, Wishlist, Saved Addresses, and Account Settings.
+- **Saved Addresses:** `public.addresses.user_id` references the authenticated UUID independently of email/profile changes. `js/address-service.js` centralizes queries and saves, keeps only a per-page memory cache, refreshes when the tab opens, and replaces the list from each successful transaction. Session changes discard the cache and reject stale responses. It uses the existing customer-auth event, with no additional SDK auth listener. Legacy `shah_saved_addresses` is neither read, written, imported, nor deleted.
 - **Section switching:** All tabs are JavaScript-driven and keep a single active section visible without page reloads.
 - **Responsive pattern:** On desktop the page uses a left sidebar; below `768px` the tabs become a scrollable horizontal row.
 - **Account management:** The shared `updateProfile()` derives ownership from the validated session, updates only full_name/phone on that row, and refreshes the cache/header/avatar immediately. There is no second profile write to Auth metadata. All settings fields, including optional phone and password controls, validate before saving. Failure retains form entries; success clears password inputs and preserves the form/focus.
 - **Email changes:** Uses `auth.updateUser({ email })`, then revalidates Auth and synchronizes the row's email. Immediate changes show success; pending changes retain the active email and explicitly ask the customer to check their inbox. Signup Confirm Email being disabled does not imply email changes never require confirmation.
 - **Password changes:** Keeps the existing 8-character/uppercase/lowercase/number rule and verifies the current password with `signInWithPassword()` before `auth.updateUser({ password })`. Supabase handles credentials exclusively; no client hash/storage or profile password columns exist. If the project requires additional reauthentication and rejects the request, the customer is asked to sign in again and retry; no OTP-entry UI is added in this phase.
 - **Partial saves:** Name/phone and Auth changes are separate requests. If Auth rejects the later email/password change, saved profile details stay saved, entered values remain available, and actionable feedback explains the failure. Retrying does not create another profile.
-- **Order cancellation:** Orders with `Processing` status expose a `Cancel Order` action. The action opens a custom modal confirmation with `Go Back` and `Confirm Cancellation` controls. Confirmed cancellation is stored under `shah_orders`, immediately changes the status to `Cancelled`, hides the action, and shows a success toast.
+- **Order cancellation:** Orders with `Processing` status expose the existing `Cancel Order` modal with `Go Back` and `Confirm Cancellation`. Confirmation updates Supabase using order UUID, authenticated user UUID, and `status = Processing`. Success changes the cached card to `Cancelled`, hides the action, and shows the existing toast. The SQL supplement limits customers to that transition and prevents editing other order columns. Owner status changes use separate authorization.
 
 ### Standalone Commerce Pages
 - **Cart:** `cart.html` renders the shared `shah_cart` items, quantity controls, totals, and empty state for guests and logged-in users. Its Proceed to Checkout action requires login before opening `checkout.html`.
@@ -379,19 +423,19 @@ All forms validate fields on blur first, then validate on each keystroke after a
 - **Email:** Required where used and checked against a complete `name@domain.tld` pattern; values are trimmed and compared case-insensitively. Signup delegates registration checks to Auth and uses generic responses instead of exposing account existence.
 - **Passwords:** Signup and password changes require at least 8 characters, one uppercase letter, one lowercase letter, and one number. Live Weak/Medium/Strong strength meters and exact confirmation matching are provided.
 - **Phone:** Accepts common spaces, dashes, parentheses, and a leading plus sign, with 10 to 15 underlying digits.
-- **Addresses:** Street addresses require at least 5 characters, cities at least 2 characters, and postal codes require 5 digits for Pakistan or 4 to 6 digits internationally.
+- **Addresses:** Street addresses require at least 5 characters and cities at least 2. Names and 10–15 digit formatted phone numbers retain the existing rules. Label is optional (40 characters maximum); address lines allow common punctuation. Country is required and accepts international names. Pakistan requires a 5-digit postal code; elsewhere postal codes may contain letters/numbers/spaces/hyphens (up to 20 characters), or be omitted for countries without postal codes. The same postal rules apply at checkout.
 - **Order and contact text:** Custom order descriptions and contact messages require 10 to 500 characters and show live counters.
 - **Newsletter:** Requires a valid email address with the same inline feedback and disabled-submit behavior.
 
 ### Stored Data Notes
 - **Profile persistence:** Full name and phone are never cached in application localStorage; the database row and per-page in-memory cache supply them. Auth metadata is used only to seed a missing row. The existing email-bucket compatibility map remains solely for the unmigrated local datasets.
 - **Supabase:** Auth owns credentials/sessions; `public.profiles.id` references `auth.users.id`, the canonical customer UUID. Profile values are escaped/text-rendered. The SDK may persist its own tokens in browser storage; these are unrelated to the removed mock session.
-- **Compatibility:** `shah_customer_data_keys` maps validated UUIDs to their first local email bucket on this browser, preserving wishlist/address/custom-request access across email changes. This map never authenticates anyone. New local orders/custom requests also record `customerId`; old orders match the original email bucket. These records remain device-local.
+- **Compatibility:** `shah_customer_data_keys` maps validated UUIDs to their first local email bucket on this browser, preserving wishlist/custom-request access across email changes. Addresses and orders no longer use this map. It never authenticates anyone. Local custom requests also record `customerId` and remain device-local.
 - **Cart:** `shah_cart` remains guest-accessible and unchanged by authentication.
-- **Orders:** Order records are stored under `shah_orders` and linked to the active user’s email when available.
+- **Orders:** Supabase `orders.user_id` references Auth UUID; `order_items.order_id` references the order. Order History never trusts `shah_orders` or `shah_last_order`. The latter caches only the most recent successfully saved receipt for confirmation. `sessionStorage` temporarily holds stable IDs and the checkout snapshot for retry; it contains no credentials and is cleared after successful checkout.
 - **Custom requests:** Custom order inquiries are stored under `shah_custom_order_requests` keyed by user email.
 - **Wishlist:** Each email key stores an array of wishlist items in `shah_wishlist`.
-- **Saved addresses:** Address collections are stored under `shah_saved_addresses` keyed by user email, with one default address selectable for reuse in checkout.
+- **Saved addresses:** Supabase `public.addresses` is the sole source of truth, owned by `auth.users.id` through `user_id`. Existing `shah_saved_addresses` contents remain inert; no automatic import of browser/mock data occurs. Customers can deliberately re-enter addresses using the validated form.
 
 ---
 
@@ -448,11 +492,11 @@ All favicon assets are generated from `Images/Logo.png` (699×699 px) using the 
 
 1. **Payment Gateway Integration:**
    - Integrate local Pakistani payment gateways (JazzCash, Easypaisa, PayFast) and international credit card processors (Stripe / PayPal API).
-2. **Customer Backend Migration (following Phases 1–2):**
-   - Customer Auth and persistent profile migration are implemented with Supabase. Next migrate wishlist, orders/order_items, addresses, and custom requests using `auth.users.id`.
-   - Add server-side cart/inventory verification, order submission, reference uploads, and payment webhooks.
+2. **Customer Backend Migration:**
+   - Customer Auth, profiles, saved addresses, orders, and order items are implemented with Supabase. Next migrate wishlist and custom requests using `auth.users.id`.
+   - Add transactional order submission with server-side pricing/cart/inventory verification, reference uploads, and payment webhooks.
 3. **Admin Dashboard Extensions:**
-   - Product management is implemented in the unlisted Supabase admin pages. Future work: custom order inquiries and fulfillment status management (*Pending, Processing, Shipped, Completed*).
+   - Product and order/status management are implemented in the unlisted Supabase admin pages. Future work: custom order inquiries, tracking details, and fulfillment notifications.
 4. **Transactional Email Service:**
    - Integrate PHPMailer / SendGrid API to automatically send order confirmation receipts and tracking links to customer emails.
 5. **WhatsApp One-Click Order Direct Link:**
@@ -469,6 +513,54 @@ The project URL and public anon key in `js/supabase-client.js` are intentionally
 ### Customer profiles and manual setup
 
 Phase 2 uses the existing schema unchanged: `id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`, `full_name TEXT`, `email TEXT`, `phone TEXT`, `created_at TIMESTAMPTZ DEFAULT now()`, and `updated_at TIMESTAMPTZ DEFAULT now()`. There are no password columns. **No new SQL migration is required if Phase 1 setup is already applied.** The existing `supabase/customer-auth.sql` is safe to rerun for this schema: it preserves rows and replaces its named policies/function/trigger.
+
+### Orders: existing schema and cancellation setup
+
+The owner supplied the already-created `public.orders` and `public.order_items` schema and policies. This migration reuses them without recreating tables. Orders contain UUID `id`/`user_id`, unique `order_number`, status/payment method, numeric subtotal/shipping_cost/total, shipping_name/phone/email/address/city/postal/country, and timestamps. Items contain UUID `id`/`order_id`, nullable bigint `product_id`, title/category, numeric price, is_custom_quote, quantity, image_url, and created_at. `orders.user_id` references Auth; `order_items.order_id` references orders; deleting a catalog product sets the item's product reference to null while retaining its snapshot.
+
+The supplied customer SELECT/INSERT policies enforce `auth.uid() = orders.user_id`; item access requires an owned parent. Owner SELECT policies expose all orders/items, and the existing owner UPDATE policy uses the UUID in `js/admin-config.js`. Customer authentication alone grants no admin access. The original policies **do not permit customer cancellation**.
+
+**Manual step:** in the Supabase project configured in `js/supabase-client.js`, open **SQL Editor → New query** and run **`supabase/order-cancellation.sql`** after the supplied tables/policies exist. It is safe to rerun against that schema and preserves rows. It enables RLS, grants the required authenticated table operations, adds `customer_orders_cancel`, and adds `guard_order_update` to restrict non-owner customer updates to their own Processing → Cancelled transition without changing other order data. The trigger maintains updated_at; trusted SQL Editor/server roles retain maintenance access. Existing owner, product, profile, address, and storage policies are not replaced. No Auth settings changes are required. **The file has not been applied remotely by this task.**
+
+UPDATE needs both row visibility and a valid update policy; the trigger additionally limits changed columns because row policies alone do not do so. References: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [PostgreSQL policy checks](https://www.postgresql.org/docs/17/sql-createpolicy.html).
+
+After deployment, verify the two tables have RLS enabled and the original customer/owner policies plus `customer_orders_cancel` are present. Use two actual non-owner test sessions, not the privileged SQL Editor, to place separate test orders. Check matching header/item IDs and totals, reload each customer's history, verify A cannot select/update B's order or insert B's items, and cancel A's Processing order. Verify anonymous access is denied. Then sign in as the owner: both orders should appear; open their details, change a status, and reload to confirm persistence. Keep tests identifiable and do not fulfill them. Test a failed item request/retry, unchanged guest cart through login, and the existing product add/edit/logout flow.
+
+Local checks: `node tests/orders-browser.cjs` exercises the UI with mocked SDK responses, including two customers, owner management, retry recovery, receipt compatibility, and layouts. `node tests/orders-sql.cjs` executes the supplied schema/policy fixture and the actual supplement twice in local PostgreSQL using the existing temporary PGlite dependency. These tests do not establish live deployment. The read-only live API schema request returned HTTP 401; schema mapping therefore uses the owner's supplied SQL. Signed-in browser access is still unavailable, so real order/customer/owner verification remains pending.
+
+### Saved addresses: Phase 3 schema, integrity, and setup
+
+`supabase/customer-addresses.sql` adds `public.addresses` with `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`, `label`, `full_name`, `phone`, `address_line_1`, `address_line_2`, `city`, `state_province`, `postal_code`, `country`, `is_default BOOLEAN NOT NULL DEFAULT false`, and `created_at`/`updated_at` timestamps. Address ownership references Auth directly, so missing/recovered profile rows and email changes do not change ownership. No passwords or credentials are stored here.
+
+RLS permits authenticated SELECT/INSERT/UPDATE/DELETE only where `auth.uid() = user_id`, with both USING and WITH CHECK on updates. A restrictive owner guard also constrains any pre-existing permissive policy; anon has no table privileges. A trigger prevents changes to address ID/owner and maintains timestamps. These policies are isolated from profiles, products, and admin access. See [Supabase's RLS model](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+The shared service invokes `customer_address_mutate(action, address_id, details)` for every save, default change, and delete. It accepts no customer ID: the function derives ownership from `auth.uid()`, runs as SECURITY INVOKER under RLS, and rejects foreign/missing address IDs. A per-customer transaction advisory lock serializes these operations, including simultaneous first inserts. A partial unique index on `user_id WHERE is_default` independently enforces **at most one default**, including direct table requests. First saved addresses become default; deleting/unchecking the default promotes the most recently updated other address (UUID breaks ties), or retains the sole remaining address. Zero addresses need no default. Failed writes roll back all changes. Direct table CRUD remains owner-restricted, but callers should use the RPC to obtain automatic first/default promotion behavior. See [PostgreSQL transaction advisory locks](https://www.postgresql.org/docs/17/explicit-locking.html).
+
+The RPC returns the refreshed list in the same request, ordered by default first, `updated_at DESC`, then ID. The frontend discards stale reads after saves/session changes and coalesces simultaneous reads. It performs no automatic legacy import. The form's owner marker only detects a changed UI session; it is never database authorization. Address text is escaped or assigned through form values/textContent.
+
+**Manual deployment required:**
+
+1. Open the Supabase Dashboard project configured in `js/supabase-client.js` → **SQL Editor → New query**.
+2. Paste and run **`supabase/customer-addresses.sql`**. It is safe to rerun against its expected schema and preserves existing rows. It creates the table, indexes, five named policies, timestamp trigger, and authenticated-only mutation RPC. It does not alter Auth settings, profile/product/admin policies, or storage buckets. **This task has not applied it to the remote database.**
+3. Verify `public.addresses` exists and RLS is enabled. In Database → Policies, inspect `customer_address_select`, `customer_address_insert`, `customer_address_update`, `customer_address_delete`, and `customer_address_owner_guard`. Inspect `addresses_one_default` and the RPC's authenticated-only EXECUTE grant.
+4. Deploy the frontend files. Using a test customer, add the first address, reload, edit, add a second, switch defaults, and delete the default. Verify the same Auth UUID owns each row, exactly one default remains when appropriate, and checkout prefills without replacing typed fields.
+5. Using two non-owner test sessions, query/update/delete B's address with A's JWT: SELECT/UPDATE/DELETE must return no rows; foreign inserts, ownership changes, and RPC requests must fail. Anonymous requests must be denied. Use actual customer sessions rather than the SQL Editor's privileged role to verify deployed RLS.
+6. Check owner admin login/dashboard/product management and non-owner denial. Keep Confirm Email disabled as currently configured; no Auth configuration changes are required for addresses.
+
+Pre-edit dependency audit:
+
+| Consumer | Existing behavior found | Phase 3 replacement |
+| --- | --- | --- |
+| `js/script.js` storage helpers | `shah_saved_addresses`, keyed through email compatibility map | Shared UUID-scoped service, no legacy reads/writes |
+| Profile Saved Addresses | Synchronous local cards and array-index edit/delete/default actions | Async skeleton/retry/cards, stable address IDs, RPC saves and confirmation-protected deletion |
+| `profile.html` address modal | Name/street/city/postal/country/phone, limited country dropdown | Same form styling, optional label/line 2/province, country suggestions accepting any country, default checkbox |
+| Validation and `css/profile.css` | Pakistan/global numeric-only postal rules, card actions and modal | International postal validation, scrollable dynamic-height modal, focus handling and 44px+ actions |
+| Checkout init/modal helper | Local default prefill; no selector or save-address control | Shared address query, default prefill only into untouched empty fields; manual entry retained |
+| Auth/profile/custom-order/admin | No other saved-address consumer found | Existing Auth listener, profile data, custom requests, and admin authorization retained |
+
+Run `node tests/customer-addresses-browser.cjs` for mocked SDK/UI regressions and `node tests/customer-addresses-sql.cjs` for the actual SQL/RPC/RLS in local PostgreSQL. The SQL suite reuses the temporary PGlite test dependency described below; it does not connect to Supabase. Real deployed policies, multiple simultaneous live browser sessions, and physical mobile keyboards require manual verification.
+
+### Existing profile/Auth setup (Phases 1–2)
 
 Profile creation has one owner: the shared frontend helper after session validation. A missing row is seeded only with that authenticated UUID and safe Auth metadata/email, using an insert-only upsert (`ignoreDuplicates`) and a reread. No `auth.users` creation trigger is installed. The existing profile-table trigger is solely for timestamps and Auth-email mirroring, not a second creation mechanism. Every profile operation is protected by own-row SELECT/INSERT/UPDATE policies plus a restrictive `auth.uid() = id` guard. Admin/product policies are unchanged.
 
@@ -501,9 +593,11 @@ Phase 2 dependency map (audited before implementation):
 | `js/auth.js` | Validated Auth UUID/email; one cached database profile; centralized creation/read/update and error mapping |
 | Navbar and account header | Cached full_name; Auth email initial if unavailable; safe text rendering |
 | Account Settings in `js/script.js` | Database name/phone; Auth email/password APIs; retries and unified toast |
-| Checkout | Restored current checkout values, empty-field profile contact prefill, then remaining local address fields |
+| Checkout | Restored current checkout values, empty-field profile contact prefill, then Supabase default-address fields (Phase 3) |
 | `js/custom-order.js` | Shared contact prefill only into empty fields; local request submission unchanged |
-| Orders/wishlist/addresses/custom requests | Existing UUID/email-bucket compatibility; still localStorage-backed |
+| Orders | Shared database service; UUID ownership and nested order items; local confirmation cache only |
+| Wishlist/custom requests | Existing UUID/email-bucket compatibility; still localStorage-backed |
+| Saved addresses (Phase 3) | Shared database service keyed by authenticated UUID; no email-bucket storage |
 | Admin | Existing independent owner validation and RLS; no customer role grants |
 
 Run `node tests/customer-profiles-browser.cjs` for profile/settings/prefill/responsive regressions with mocked SDK responses. For database enforcement, install test-only `@electric-sql/pglite` into a temporary directory and run `node tests/customer-profiles-sql.cjs`; set `PGLITE_MODULE` to that installed package path if needed. The default path is the OS temp directory's `shah-profile-sql-tests/node_modules/@electric-sql/pglite`. This is a test dependency, not an application dependency. The test runs the repository SQL twice in local PostgreSQL with minimal Auth roles/UUID context, checks data preservation, and exercises own-row access, foreign-row/ID denial, anonymous denial, and email/timestamp behavior. It does not contact the live project.
@@ -529,7 +623,36 @@ Validation on 2026-09-14: customer, admin, shop, and gallery browser suites pass
 - Validation on 2026-09-10: live login, upload, product creation, public homepage visibility, price update, deletion, and logout passed. The test confirmed the uploaded Storage object existed before deletion and was absent afterwards, and the product row disappeared from the dashboard and public query. Empty-image and external-image test rows deleted without Storage removal requests. The previous interrupted test row was also removed. The mocked suite passed cleanup URL parsing, null/malformed/foreign URLs, Storage error/exception handling, and stale-image checks. No JavaScript runtime errors occurred. Server-side rejection of other authenticated accounts has not been independently verified.
 - Validation on 2026-09-14: admin browser regression passed with no Is Featured form control. The live homepage request was `in_stock=eq.true&order=created_at.desc&limit=6`, contained no `is_featured` filter, rendered without runtime errors, and returned the current newest in-stock catalog result.
 
+### Order Management
+
+`admin.html` now has an Order Management panel alongside product management. `js/admin-orders.js` initializes only after the existing owner check passes; every service request validates that owner again. The panel queries all customers' orders with nested items, newest first, and uses exact counts plus 25-row Previous/Next pagination. Order number, shipping name, date, total, quantity count, and current status appear in the table. View details expands items, delivery address, contact information, payment method, and totals. Missing items show an explicit unfinished-save warning.
+
+The status selector supports Processing, Shipped, Delivered, and Cancelled. Save uses the row ID and previously displayed status to reject stale changes, shows progress, and confirms success using the existing admin toast. Failed loads/saves show an inline explanation and Refresh Orders retry. Customer-owned order filters are confined to customer history; the owner panel deliberately has no user_id filter. All database text is escaped, and image URLs permit only HTTP(S). Existing product management and owner authentication behavior remain intact; no new session listener is introduced.
+
 ## 11. Change Log
+
+### [2026-09-17] - Customer Forgot Password Flow
+
+- Added a subtle Forgot password? control below the login password field and a third view in the existing modal for validated email reset requests, generic confirmation, loading, failure recovery, and Back to Login.
+- Added `reset-password.html` with standard site chrome and a token-styled centered card. Extended the existing auth listener with recovery-event state and server identity checks; reused password rules, matching confirmation, strength meter, and inline status components. Success clears password inputs and offers local sign-out plus homepage login; cart/checkout intent remain untouched.
+- Added a dedicated browser regression suite. Documented recovery behavior, invalid/direct visits, file/page/feature inventory, email-provider limitations, required production/local redirect URLs, and live verification steps. No SQL or remote Supabase configuration was changed.
+- Validation: `node tests/password-recovery-browser.cjs`, `node tests/customer-auth-browser.cjs`, and the unchanged `node tests/admin-browser.cjs` passed, along with syntax/diff checks. Recovery checks cover same-modal switching, generic feedback, duplicate-submit/network recovery, seven viewport widths and a shortened mobile viewport, direct/ordinary-session/expired-link rejection, a recovery event before page bindings, password strength/matching, retained retry entries, successful update, return-to-login sign-out, cart preservation, and expiry before submission. SDK/email responses are mocked; real inbox delivery, email clicks, and login with the changed live password remain unverified because no test inbox or signed-in browser is accessible.
+
+### [2026-09-17] - Supabase Orders and Owner Order Management
+
+- Replaced local order creation/history/cancellation with `orders` and nested `order_items` queries through `js/order-service.js`, using the server-validated Auth UUID. Legacy `shah_orders` is ignored and retained without import. Guest cart/login behavior and the confirmation receipt UI remain unchanged.
+- Checkout saves the header and all item snapshots before clearing the cart or redirecting, retains `shah_last_order` in its existing receipt shape, prevents repeated submits, and uses stable order/item UUIDs for same-tab failure/reload retries. Documented unfinished headers from the requested two-request flow and the need for future transactional/server-validated submission.
+- Added the isolated owner order panel, expandable details, status saves with stale-update checks, error/retry states, and 25-row pagination using existing admin styles. Product cards now retain their database product ID in new cart entries when available.
+- Added the idempotent cancellation policy/column-guard supplement, required because the supplied policies permit only owner updates. Local PostgreSQL checks passed for two-customer isolation, item ownership, cancellation-only updates, owner visibility/status changes, anonymous denial, and safe reruns. Existing admin and customer-auth browser regressions passed; live Supabase setup and signed-in testing remain pending.
+- Order browser checks passed for header/item failures, cart continuity through login, reload/repeated-submit/lost-response retries without duplicate records, unchanged confirmation cache, ignored legacy history, cancellation persistence, history retry, two-customer filtering, owner status persistence, safe rendering, and 25-row pagination. Profile and admin order layouts had no document overflow at 1440/1024/900/768/480/393/360px. Saved-address regressions, JavaScript syntax, and diff checks also passed. Browser SDK responses were mocked; actual RLS was exercised separately in local PostgreSQL. The connected-browser inventory remained empty after retry/reset, so no live-account result is claimed.
+- Updated overview, file inventory, checkout/profile behavior, features, storage notes, limitations, database deployment/verification, admin documentation, and roadmap. No remote SQL, Auth configuration, or deployment was changed.
+
+### [2026-09-16] - Phase 3 — Supabase Saved Address Migration
+- Replaced all application `shah_saved_addresses` reads/writes with a shared Supabase address service. UUID ownership and per-page memory state replace email-keyed local address arrays; legacy data is ignored and retained without importing it.
+- Added idempotent address schema/RLS/RPC setup with immutable ownership, timestamps, a one-default unique index, transaction locking, first-address defaults, and deterministic promotion after default deletion/unchecking. Existing customer Auth/profiles and admin policies remain unchanged.
+- Preserved profile cards and form styling, adding the requested optional address fields/default control, custom delete confirmation, accessible loading/saving/retry/focus behavior, international postal validation, and mobile form sizing. Checkout loads the cloud default into untouched empty fields; no new checkout selector or save checkbox was introduced because neither existed.
+- Updated overview, files, features, page behavior, storage notes, security/database setup, dependency map, limitations, and future phases. Added browser and local PostgreSQL regression suites; live SQL deployment remains a documented manual step.
+- Validation: address browser and local PostgreSQL suites passed, along with customer-auth, customer-profile, and the unchanged admin browser regressions. Coverage includes CRUD/default/delete recovery, ignored legacy data, escaped address text, UUID/RLS isolation for two local test users, anonymous denial, rollback and unique-default enforcement, checkout/cart continuity, and 1440/1024/900/768/480/393/360px layouts plus a shortened mobile viewport. Desktop/mobile screenshots were inspected. Syntax and diff checks passed. The auth test cart now uses a valid local image to avoid an unrelated blocked-image fallback loop during navigation; authentication assertions are unchanged. Live Supabase policies, real concurrent sessions, and physical mobile keyboards have not been verified.
 
 ### [2026-09-14] - Persistent Customer Profiles, Phase 2
 - Completed profile-data integration using the existing Supabase profiles table/RLS and shared frontend creation path. Removed Auth-metadata display fallback; added an email-initial navbar fallback, bounded in-memory caching, loading/retry states, and immediate profile/header/avatar refresh after saving.
