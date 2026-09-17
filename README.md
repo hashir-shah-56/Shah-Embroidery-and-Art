@@ -510,6 +510,12 @@ The project URL and public anon key in `js/supabase-client.js` are intentionally
 
 ### Custom order requests: existing schema and verification
 
+**2026-09-17 live upload diagnosis:** The configured project's upload endpoint for `custom-order-images` returned HTTP 400 with `{"statusCode":"404","error":"Bucket not found","message":"Bucket not found","code":"NoSuchBucket"}`. Guest database inserts without images returned HTTP 201, both with `specific_date: null` and with a valid date. The confirmed failure is Storage bucket provisioning, before INSERT; no insert-column, date or guest RLS error was observed. Authenticated submissions remain unverified. Two diagnostic guest requests use `diagnostic@example.com` and descriptions marked “do not fulfill.”
+
+**Required manual repair:** In the Supabase project configured in `js/supabase-client.js`, run `supabase/custom-order-storage.sql` in SQL Editor. It creates the missing public `custom-order-images` bucket used by existing reference URLs, adds INSERT policies limited to guest `guests/` paths or the authenticated user's UUID folder, and leaves product/table policies unchanged. Public reference URLs are readable by anyone who has the URL, matching the current rendering design. The script preserves an existing bucket and refuses to change a private bucket's visibility implicitly. It is safe to rerun and has **not been applied remotely**. See [Supabase bucket setup](https://supabase.com/docs/guides/storage/quickstart) and [Storage access policies](https://supabase.com/docs/guides/storage/security/access-control).
+
+Temporary diagnostics in `js/custom-order.js` log the full returned INSERT error as `Custom order insert failed:` and name/code/status/message for session or upload failures with their stage. They do not log the submitted payload, session or tokens. Remove these temporary logs after the affected browser and live customer/guest image/date paths are verified. Do not infer a database error from the generic toast alone.
+
 The owner's existing `public.custom_order_requests` table is reused without schema or policy changes. It stores UUID `id`, nullable Auth `user_id`, guest_email, full_name, email, phone, order_type, dimensions, color_palette, occasion, description, budget_range, timeline, nullable date specific_date, text-array reference_image_urls, status, created_at and updated_at. The owner panel advances updated_at when saving a status.
 
 The supplied RLS policies allow authenticated customer SELECT/INSERT only where `auth.uid() = user_id`, anonymous INSERT only with null user_id, and owner SELECT/UPDATE across all rows using the UUID in `js/admin-config.js`. Guests have no SELECT and customers have no UPDATE policy. Client checks supplement these database policies; they do not replace them. **No new SQL file or remote configuration change is required if the supplied table, policies and table grants are already deployed.** Verify RLS and these five policies in Database → Policies, and verify anon INSERT and authenticated SELECT/INSERT/UPDATE grants as appropriate; grants alone do not bypass RLS. Existing `custom-order-images` upload/public-read configuration is reused unchanged.
@@ -643,6 +649,11 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
 `admin.html` includes an isolated `js/admin-custom-orders.js` panel initialized after the existing owner gate; each load/save revalidates the owner. It lists all customer and guest requests newest first with 25-row pagination, name/email/type/date/account/image count and status. Expand details to inspect the full brief, contact fields and reference thumbnails. Four status options match customer tracking; Save checks the previously displayed status, disables duplicate actions, updates the timestamp, and shows the existing admin toast. Failed loads/saves retain actionable Refresh/retry guidance. Database text is escaped and image links accept only HTTP(S). Product/order management and admin authorization remain unchanged.
 
 ## 11. Change Log
+
+### [2026-09-17] - Custom Request Upload Failure Diagnosis and Storage Setup
+
+- Captured live `NoSuchBucket` / `Bucket not found` from the reference upload endpoint; verified guest no-image INSERT succeeds with and without a date. This failure occurs before request INSERT, outside the proposed payload/type/identity causes.
+- Added temporary stage/INSERT console diagnostics and `supabase/custom-order-storage.sql` to provision the expected bucket and scoped upload permissions. No submission flow or table policy was rewritten. Remote application and authenticated/image success checks remain pending; this is not a claim that production is repaired.
 
 ### [2026-09-17] - Supabase Custom Requests and Owner Management
 

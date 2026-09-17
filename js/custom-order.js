@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const controls = [...form.querySelectorAll('input, select, textarea, button')].filter(control => control !== submitButton);
     const disabled = controls.map(control => control.disabled);
     controls.forEach(control => { control.disabled = true; });
+    let submissionStage = 'session validation';
 
     try {
       const client = typeof supabaseClient !== 'undefined' ? supabaseClient : null;
@@ -97,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!authUser && window.customerAuth.getCurrentUser()) throw new Error('Session changed');
       const referenceImageUrls = [];
       for (const file of selectedFiles) {
+        submissionStage = 'reference image upload';
         const owner = authUser?.id || 'guests';
         let uploaded = uploadedFiles.get(file);
         if (!uploaded || uploaded.owner !== owner) {
@@ -135,13 +137,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         reference_image_urls: referenceImageUrls
       };
 
+      submissionStage = 'session revalidation';
       const verified = await client.auth.getUser();
       if ((verified.error && verified.error.name !== 'AuthSessionMissingError') || (verified.data?.user?.id || null) !== (authUser?.id || null)) throw new Error('Session changed');
+      submissionStage = 'insert';
       const { error } = await client
         .from('custom_order_requests')
         .insert(payload);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Custom order insert failed:', error);
+        throw error;
+      }
 
       if (authUser) {
         window.location.href = 'profile.html#custom-orders';
@@ -157,6 +164,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTypeState(false);
       if (window.showToast) window.showToast('Your custom order request has been received!', 'success');
     } catch (error) {
+      if (submissionStage !== 'insert') console.error('Custom order submission failed:', {
+        stage: submissionStage, name: error?.name, code: error?.code,
+        status: error?.status, message: error?.message
+      });
       if (window.showToast) {
         window.showToast("Couldn't save your request — please try again.", 'error');
       } else {
