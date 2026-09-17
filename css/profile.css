@@ -352,6 +352,21 @@
   font-size: 0.8rem;
 }
 
+.custom-request-images {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.custom-request-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
 .account-wishlist-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }

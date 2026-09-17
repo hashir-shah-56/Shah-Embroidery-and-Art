@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     cart: 'shah_cart',
     lastOrder: 'shah_last_order',
     wishlist: 'shah_wishlist',
-    customOrderRequests: 'shah_custom_order_requests',
     pendingCheckoutFormData: 'pendingCheckoutFormData',
     loginRedirectTarget: 'loginRedirectTarget'
   };
@@ -252,21 +251,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       status?.setAttribute('aria-busy', 'false');
     }
-  };
-
-  const getCustomRequests = () => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return [];
-    const requests = getFromStorage(STORAGE_KEYS.customOrderRequests, {});
-    return requests[currentUser.localDataKey] || [];
-  };
-
-  const saveCustomRequests = (requests) => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) return;
-    const requestMap = getFromStorage(STORAGE_KEYS.customOrderRequests, {});
-    requestMap[currentUser.localDataKey] = requests;
-    saveToStorage(STORAGE_KEYS.customOrderRequests, requestMap);
   };
 
   // 1. Sticky Navbar & Scroll Effects
@@ -1159,6 +1143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let profileRenderVersion = 0;
   let addressLoadError = false;
+  let customOrderRows = [];
+  let customOrdersLoadError = false;
   const renderProfileSection = async (sectionName, skipLoadingState = false) => {
     const version = ++profileRenderVersion;
     if (!accountSectionContent) return;
@@ -1190,12 +1176,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!skipLoadingState) {
       showDynamicSkeleton(accountSectionContent, profileSkeleton(sectionName));
       addressLoadError = false;
+      customOrdersLoadError = false;
       await Promise.all([
         new Promise(resolve => window.setTimeout(resolve, SKELETON_MIN_MS)),
         sectionName === 'orders' ? Promise.resolve().then(() => orderService.listCustomer(user.id)).then(rows => {
           if (version === profileRenderVersion && getCurrentUser()?.id === user.id) { customerOrderRows = rows; ordersLoadError = false; }
         }).catch(() => { if (version === profileRenderVersion) { customerOrderRows = []; ordersLoadError = true; } }) :
-        sectionName === 'addresses' ? Promise.resolve().then(() => addressService.getAddresses({ refresh: true })).catch(() => { addressLoadError = true; }) : Promise.resolve()
+        sectionName === 'addresses' ? Promise.resolve().then(() => addressService.getAddresses({ refresh: true })).catch(() => { addressLoadError = true; }) :
+        sectionName === 'custom-orders' ? (async () => {
+          try {
+            const { data: identity, error: identityError } = await supabaseClient.auth.getUser();
+            const authUser = identity?.user;
+            if (identityError || !authUser || authUser.id !== user.id) throw new Error('Session changed');
+            const { data, error } = await supabaseClient
+              .from('custom_order_requests')
+              .select('*')
+              .eq('user_id', authUser.id)
+              .order('created_at', { ascending: false });
+            if (version === profileRenderVersion && getCurrentUser()?.id === user.id) {
+              if (error) throw error;
+              customOrderRows = data || [];
+              customOrdersLoadError = false;
+            }
+          } catch {
+            if (version === profileRenderVersion) { customOrderRows = []; customOrdersLoadError = true; }
+          }
+        })() : Promise.resolve()
       ]);
       if (version !== profileRenderVersion || getCurrentUser()?.id !== user.id) return;
     }
@@ -1297,8 +1303,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const renderCustomOrdersSection = () => {
-    const requests = getCustomRequests();
-    if (!requests.length) {
+    const statuses = ['Inquiry Received', 'In Progress', 'Ready for Review', 'Completed'];
+    if (customOrdersLoadError) {
+      return `
+        <div class="account-section active">
+          <div class="empty-state">
+            <p>Unable to load your custom order requests. Please check your connection and try again.</p>
+            <button id="retryCustomOrders" class="btn btn-outline">Retry</button>
+          </div>
+        </div>
+      `;
+    }
+    if (!customOrderRows.length) {
       return `
         <div class="account-section active">
           <div class="empty-state">
@@ -1312,23 +1328,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `
       <div class="account-section active">
         <div class="account-progress">
-          ${requests.map((request, index) => {
-      const statuses = ['Inquiry Received', 'In Progress', 'Ready for Review', 'Completed'];
-      const completedSteps = Math.min(index % 4 + 1, 4);
+          ${customOrderRows.map((request, index) => {
+      const statusIndex = statuses.indexOf(request.status);
+      const completedSteps = Math.max(1, Math.min(statusIndex + 1, 4));
       const progressWidth = (completedSteps / 4) * 100;
+      const dateStr = request.created_at
+        ? new Date(request.created_at).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })
+        : '';
+      const summary = escapeHTML(request.description || 'Custom design request');
+      const images = (Array.isArray(request.reference_image_urls) ? request.reference_image_urls : []).filter(url => { try { return ['http:', 'https:'].includes(new URL(url).protocol); } catch { return false; } });
       return `
               <div class="custom-request-card account-panel-card">
                 <div class="custom-request-header">
                   <div>
                     <div class="order-num">Request #${index + 1}</div>
-                    <div class="custom-request-date">${request.date}</div>
+                    ${dateStr ? `<div class="custom-request-date">${dateStr}</div>` : ''}
                   </div>
-                  <span class="order-status-badge">${statuses[completedSteps - 1]}</span>
+                  <span class="order-status-badge">${escapeHTML(request.status || 'Inquiry Received')}</span>
                 </div>
-                <div class="custom-request-summary">${escapeHTML(request.summary || request.details || 'Custom design request')}</div>
+                <div class="custom-request-summary">${summary}</div>
+                ${images.length ? `<div class="custom-request-images">${images.slice(0, 4).map(url => `<img src="${escapeHTML(url)}" alt="Reference image" class="custom-request-thumb" loading="lazy">`).join('')}</div>` : ''}
                 <div class="progress-indicator">
                   ${statuses.map((status, stepIndex) => `
-                    <span class="progress-step ${stepIndex < completedSteps ? 'complete' : ''}">${stepIndex + 1}</span>
+                    <span class="progress-step ${stepIndex < completedSteps ? 'complete' : ''}" title="${status}">${stepIndex + 1}</span>
                   `).join('')}
                 </div>
                 <div class="progress-bar" aria-label="Custom request progress">
@@ -1644,6 +1666,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('retryAddresses')?.addEventListener('click', () => renderProfileSection('addresses'));
+    document.getElementById('retryCustomOrders')?.addEventListener('click', () => renderProfileSection('custom-orders'));
+
     document.querySelectorAll('.edit-address').forEach(button => {
       button.addEventListener('click', () => {
         const selected = getSavedAddresses().find(row => row.id === button.dataset.addressId);
@@ -2586,7 +2610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderWishlistButtons();
     }
     if (previousCustomerId && nextId !== previousCustomerId && (isProfilePage || isCheckoutPage)) {
-      profileRenderVersion++; customerOrderRows = [];
+      profileRenderVersion++; customerOrderRows = []; customOrderRows = [];
       cancelOrderModal?.classList.remove('active');
       addressModal?.classList.remove('active');
       addressDeleteModal?.classList.remove('active');

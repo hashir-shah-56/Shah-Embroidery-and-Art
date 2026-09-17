@@ -52,6 +52,15 @@
         </table></div>
         <div class="admin-pagination"><button id="previousOrdersPage" class="btn btn-outline" type="button" disabled>Previous</button><span id="ordersPageStatus" role="status"></span><button id="nextOrdersPage" class="btn btn-outline" type="button" disabled>Next</button></div>
       </section>
+      <section class="admin-panel" id="adminCustomOrdersPanel" aria-labelledby="customOrdersHeading">
+        <div class="admin-section-header"><h2 id="customOrdersHeading">Custom Order Requests</h2><button id="refreshCustomOrders" class="btn btn-outline" type="button">Refresh</button></div>
+        <p id="customOrdersError" class="form-error-text" role="alert"></p>
+        <div class="admin-table-wrap" tabindex="0" role="region" aria-label="Custom order requests table"><table>
+          <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Order Type</th><th scope="col">Date</th><th scope="col">Account</th><th scope="col">Status</th><th scope="col">Details</th></tr></thead>
+          <tbody id="customOrdersBody"></tbody>
+        </table></div>
+        <div class="admin-pagination"><button id="previousCustomOrdersPage" class="btn btn-outline" type="button" disabled>Previous</button><span id="customOrdersPageStatus" role="status"></span><button id="nextCustomOrdersPage" class="btn btn-outline" type="button" disabled>Next</button></div>
+      </section>
     </main>
   </div>
   <div id="deleteModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteHeading" aria-describedby="deleteMessage" hidden>
@@ -64,6 +73,7 @@
   <script src="js/admin-config.js"></script>
   <script src="js/order-service.js"></script>
   <script src="js/admin-orders.js"></script>
+  <script src="js/admin-custom-orders.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

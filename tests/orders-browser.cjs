@@ -76,6 +76,8 @@ function ordersMock(owner) {
     await page.locator('#loginEmail').fill('one@example.com'); await page.locator('#loginPassword').fill('StrongPass1');
     await page.locator('#loginForm [type=submit]').click(); await page.waitForURL('**/checkout.html'); await page.evaluate(()=>customerAuth.ready);
     assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('shah_cart'))),cart);
+    assert.equal(await page.locator('.payment-card, .payment-options-grid, #bankTransferDetails, #cardMockDetails').count(),0);
+    assert.equal(await page.locator('.checkout-payment-value').textContent(),'Cash on Delivery');
     await fill(); await page.evaluate(()=>localStorage.setItem('test-order-failure','orders-insert')); await submit();
     await page.waitForFunction(()=>document.querySelector('#siteToast')?.textContent.includes("couldn't save"));
     assert.equal((await db()).orders.length,0); assert(page.url().endsWith('checkout.html'));
@@ -88,6 +90,9 @@ function ordersMock(owner) {
     await submit(); await page.locator('#checkoutForm').dispatchEvent('submit');
     await page.waitForURL('**/order-confirmation.html');
     let rows=await db(); assert.equal(rows.orders.length,1); assert.equal(rows.order_items.length,2);
+    assert.equal(rows.orders[0].payment_method,'cod');
+    await page.waitForFunction(()=>document.querySelector('#confirmReceiptCard')?.textContent.includes('Cash on Delivery'));
+    assert.doesNotMatch(await page.locator('#confirmReceiptCard').innerText(),/bank transfer|WhatsApp|Credit.*Debit/i);
     assert.equal(rows.orders[0].user_id,a); assert.equal(rows.orders[0].total,2500); assert.equal(rows.order_items[0].product_id,12); assert.equal(rows.order_items[1].is_custom_quote,true);
     assert.equal(await page.evaluate(()=>localStorage.getItem('shah_cart')),null);
     assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('shah_last_order')).items),cart);
@@ -95,7 +100,9 @@ function ordersMock(owner) {
     console.log('PASS: guest login/cart continuity; header/item failures retain cart; reload retry and repeated submit create one header/two items; unchanged receipt cache and ignored legacy orders');
     await goto('profile.html'); await page.locator('.account-order-card').waitFor();
     assert.equal(await page.locator('.account-order-card').count(),1);
-    await page.locator('.order-expand-btn').click(); await page.locator('.cancel-order-btn').click();
+    await page.locator('.order-expand-btn').click();
+    assert.match(await page.locator('#order-details-0').innerText(),/Cash on Delivery/);
+    await page.locator('.cancel-order-btn').click();
     await page.locator('#confirmCancellation').click(); await page.waitForFunction(()=>document.querySelector('.order-status-badge')?.textContent==='Cancelled');
     assert.equal((await db()).orders[0].status,'Cancelled');
     await page.reload(); await page.locator('.order-status-badge').waitFor(); assert.equal(await page.locator('.cancel-order-btn').count(),0);
@@ -118,6 +125,13 @@ function ordersMock(owner) {
     await identity(owner,'Owner'); await goto('admin.html'); await page.locator('#orderStatus-0').waitFor();
     assert.equal(await page.locator('.order-status-save').count(),2);
     await page.locator('.order-details-toggle').first().click(); assert.match(await page.locator('#adminOrderDetails-0').innerText(), /12 Main Road/);
+    assert.match(await page.locator('#adminOrderDetails-0').innerText(), /Cash on Delivery/);
+    await page.evaluate(()=>{const db=JSON.parse(localStorage.getItem('test-orders-db'));db.orders[0].payment_method='bank';db.orders[1].payment_method='card';localStorage.setItem('test-orders-db',JSON.stringify(db));});
+    await identity(b,'Customer Two'); await goto('profile.html'); await page.locator('.account-order-card').waitFor();
+    await page.locator('.order-expand-btn').click(); assert.match(await page.locator('#order-details-0').innerText(),/Credit \/ Debit Card Online/);
+    await identity(owner,'Owner'); await goto('admin.html'); await page.locator('#orderStatus-0').waitFor();
+    assert.match(await page.locator('#ordersBody').textContent(),/Direct Bank Transfer/);
+    assert.match(await page.locator('#ordersBody').textContent(),/Card \(simulated\)/);
     await page.locator('#orderStatus-0').selectOption('Shipped'); await page.locator('.order-status-save').first().click();
     await page.waitForFunction(()=>document.querySelector('#orderStatus-0')?.value==='Shipped' && document.querySelector('.order-status-save')?.disabled);
     await page.reload(); await page.locator('#orderStatus-0').waitFor(); assert.equal(await page.locator('#orderStatus-0').inputValue(),'Shipped');

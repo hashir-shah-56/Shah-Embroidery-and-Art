@@ -462,6 +462,7 @@
       });
       $('authStatus').hidden = true; dashboard.hidden = false;
       window.adminOrders?.initialize({ toast, pageSize });
+      window.adminCustomOrders?.initialize({ toast, pageSize });
       syncQuote();
       await loadCategories();
       await loadProducts();

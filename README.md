@@ -15,7 +15,7 @@ Welcome to the official repository for **Shah Embroidery & Art**. This document 
 - **Brand Vision:** Combining traditional needlework heritage with contemporary artistic elegance. Specializing in handmade floral embroidery, custom bridal hoops, Islamic calligraphic threadwork, and personalized portrait embroidery.
 - **Site Purpose:** High-end business and service website showcasing past works, accepting custom order requests, providing itemized artwork exploration, and executing a complete front-end e-commerce shopping cart & multi-step checkout workflow.
 - **Tech Stack:**
-  - **Customer backend:** Supabase Auth, persistent customer profiles, saved addresses, orders, and order items linked to `auth.users.id`. Profile names/phones come from `public.profiles`; email/password changes use Auth. Cart, wishlist, and custom requests remain browser-local; `shah_last_order` remains a receipt cache.
+  - **Customer backend:** Supabase Auth, persistent customer profiles, saved addresses, orders, order items, and custom order requests linked to `auth.users.id`. Guest custom requests have no user ID. Profile names/phones come from `public.profiles`; email/password changes use Auth. Cart and wishlist remain browser-local; `shah_last_order` remains a receipt cache.
   - **Core:** HTML5, Modular Vanilla CSS3, Vanilla JavaScript (ES6+)
   - **Typography & Icons:** Google Fonts (`Cormorant Garamond` & `Plus Jakarta Sans`), Font Awesome 6 Free
   - **Tooling & Build System:** Google Antigravity Agentic IDE
@@ -161,9 +161,10 @@ Shah Embroidery/
     ├── address-service.js               # Own-customer address queries, transactional CRUD/default RPC, memory cache
     ├── order-service.js                 # Validated customer/owner order queries, inserts, retries and status changes
     ├── admin-orders.js                  # Isolated admin order table, details, status controls and pagination
+    ├── admin-custom-orders.js           # Owner custom requests, reference images, status updates and pagination
     ├── product-loader.js                # Shared product card renderer & Supabase catalog loader
     ├── shop.js                          # Shop queries, URL state, skeleton loading & pagination controls
-    └── custom-order.js                  # Standalone custom order form and upload preview flow
+    └── custom-order.js                  # Custom request validation, Storage uploads and Supabase submission
 ```
 
 ---
@@ -267,10 +268,10 @@ Product categories are fully dynamic and driven entirely by real category names 
 - **Behaviour:** Inherits all shared scripting (`js/script.js`), so the cart badge, account avatar, mobile drawer, and footer newsletter toast stay fully alive on the error page. Verified responsive with zero horizontal scroll at desktop and mobile widths.
 
 ### 16. Custom Order Page (`custom-order.html`)
-- **Description:** A dedicated request workflow organized into Contact Information, Order Details, Reference Images, Budget & Timeline, and Submit sections. After session/profile loading, empty name/phone fields use `public.profiles` and email uses the authenticated address. Text entered while loading is preserved. Custom-request records/uploads remain outside this migration.
+- **Description:** A dedicated request workflow organized into Contact Information, Order Details, Reference Images, Budget & Timeline, and Submit sections. After session/profile loading, empty name/phone fields use `public.profiles` and email uses the authenticated address. Text entered while loading is preserved. Requests persist in `public.custom_order_requests`.
 - **Order details:** Visual choices cover Hoop Art, Wall Art, Bridal/Wedding, Islamic Calligraphy, Portrait Embroidery, and Other. Dimensions, palette, occasion, budget, timeline, and a conditional specific date complete the brief.
-- **Reference images:** An optional drag-and-drop or browse zone previews selected image thumbnails locally and permits removal before submission.
-- **Behavior:** Logged-in users are redirected to `profile.html#custom-orders` after submission, where the new request appears as `Inquiry Received`. Guests receive an inline confirmation while their request is stored under the guest localStorage bucket.
+- **Reference images:** The existing optional drag-and-drop/browse preview uploads files to `custom-order-images` before inserting the request with `reference_image_urls`. Completed uploads are reused during same-page retries for the same authenticated identity.
+- **Behavior:** Server-validated customers submit their Auth UUID; guests submit null `user_id` and their entered `guest_email`. Successful customers return to `profile.html#custom-orders`; guests receive inline confirmation and cannot later query their request. INSERT does not request returned rows, preserving guest INSERT-only RLS. Loading prevents duplicate clicks; upload/insert failures retain all form data and selected files for retry.
 
 ### 17. Artwork Quick View Modal (`#quickViewModal`)
 - **Description:** Modal displaying enlarged artwork image, category badge, detailed price, and a prominent *Add to Cart* button.
@@ -307,7 +308,8 @@ Product categories are fully dynamic and driven entirely by real category names 
 ### 21. Customer Profile (`profile.html`)
 - Shows a neutral loading status/skeleton before protected account content. The shared helper verifies the session, fetches the current UUID's profile, and safely creates a missing row from Auth metadata/email. Legacy account values are never displayed or imported.
 - Account Settings loads database name/phone and the Auth email. Failed profile loads show a retry action. Saving validates all settings fields, displays `Saving...` with `aria-busy`, prevents duplicate writes, and retains entries on failure. Success refreshes the cache, header, avatar, and saved values without replacing the form.
-- Saved Addresses fetches the signed-in customer's database rows, default first then newest updated, with loading skeletons, retry, and the existing empty state. Add/Edit retains the form/card design and supports an optional label, second address line, province, and default checkbox. Country suggestions accept other country names. Delete uses the site's custom confirmation pattern. All actions show progress and unified feedback; failed edits retain entered values. Sidebar/mobile tabs and local wishlist/custom requests remain intact.
+- Saved Addresses fetches the signed-in customer's database rows, default first then newest updated, with loading skeletons, retry, and the existing empty state. Add/Edit retains the form/card design and supports an optional label, second address line, province, and default checkbox. Country suggestions accept other country names. Delete uses the site's custom confirmation pattern. All actions show progress and unified feedback; failed edits retain entered values. Sidebar/mobile tabs and local wishlist remain intact.
+- Custom Order Tracking queries `custom_order_requests` for the verified customer's UUID, newest first, retaining skeletons, empty state, request cards and reference thumbnails. Failures offer Retry. The real status drives the four steps: Inquiry Received, In Progress, Ready for Review, Completed. Reload/reopen the tab to see owner updates.
 - Order History queries `orders` with nested `order_items`, filtered by the validated customer's UUID, newest first. Existing cards, thumbnails, expandable details, status badges, and empty state are preserved. The existing skeleton covers loading; failures offer Try Again. Cancel Order updates only the current customer's still-Processing row; stale status changes are rejected and failures leave the confirmation recoverable. No legacy orders are read or automatically imported.
 
 ### 22. Password Recovery (`reset-password.html`)
@@ -336,7 +338,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 - [x] **Guest Cart Access:** Guests can add items from artwork cards and Quick View, adjust quantities, view the cart, and use wishlist hearts without authentication.
 - [x] **Double-Click Add to Cart:** Quick shortcut to add artwork cards directly to cart (desktop double-click; single tap on touch devices, with success toast).
 - [x] **Gallery Category Filtering:** Animated tab filter for portfolio items.
-- [x] **Standalone Custom Order Form:** Dedicated custom-order page with category cards, optional budget/timeline choices, client-side reference previews, and localStorage-backed submission.
+- [x] **Standalone Custom Order Form:** Existing category/budget/timeline choices and reference previews, with Storage uploads and Supabase-backed customer/guest submission, profile tracking and owner status management.
 - [x] **Checkout Form Validation:** Real-time client-side validation for required fields, email format, and phone inputs.
 - [x] **Cash on Delivery Checkout:** Simplified checkout offering Cash on Delivery exclusively, eliminating unnecessary selector friction.
 - [x] **Order Receipt Generation:** Automatic generation of order ID `#SE-XXXXX`, receipt card breakdown, and date stamping in `localStorage` (`shah_last_order`).
@@ -354,10 +356,10 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 > [!WARNING]
 > **CURRENT FRONT-END SCOPE & GAPS**
-> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, profiles, saved addresses, orders, and order items. Cart, wishlist, and custom requests still require database migration. Legacy `shah_orders` is ignored, retained, and never imported; `shah_last_order` is only a receipt cache. Address setup and the order-cancellation supplement require manual SQL deployment; local tests do not prove live configuration.
+> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, profiles, saved addresses, orders, order items, and custom requests. Cart and wishlist still require database migration. Legacy local orders/custom requests are ignored and retained; `shah_last_order` is only a receipt cache. Local tests do not prove live schema, grants or RLS deployment.
 > 2. **No Order Email Dispatch:** The receipt notification remains a simulation. Supabase Auth confirmation emails are separate and depend on dashboard/email-provider configuration.
 > 3. **Inventory Limits:** Featured products are filtered by Supabase `in_stock`; checkout does not reserve or decrement stock.
-> 4. **Reference Image Storage:** Custom-order reference files are previewed locally and only their filenames are stored. Persistent file uploads require backend storage.
+> 4. **Custom Request Recovery:** Reference images persist in Storage. Uploads abandoned after a failed insert may require manual cleanup. Same-page retries reuse completed uploads, but a lost response after a committed request can cause a duplicate on retry; this schema has no submission idempotency key. Guest requests are not readable by guests.
 > 5. **Social Profiles Point to Handle Slugs:** Footer social icons link to `instagram.com/shah-embroidery`, `facebook.com/shah-embroidery`, and `pinterest.com/shah-embroidery`. Confirm these slugs map to the studio's live profiles (handles assumed from owner-provided slug).
 > 6. **Product Loading Fallback:** Featured cards retain their hardcoded content if the Supabase query fails or returns no rows.
 > 7. **Currency Display:** Prices now display as PKR (`Rs.`) without exchange-rate conversion. Historical order records retain the currency-formatted string stored when each order was created.
@@ -426,10 +428,10 @@ All forms validate fields on blur first, then validate on each keystroke after a
 ### Stored Data Notes
 - **Profile persistence:** Full name and phone are never cached in application localStorage; the database row and per-page in-memory cache supply them. Auth metadata is used only to seed a missing row. The existing email-bucket compatibility map remains solely for the unmigrated local datasets.
 - **Supabase:** Auth owns credentials/sessions; `public.profiles.id` references `auth.users.id`, the canonical customer UUID. Profile values are escaped/text-rendered. The SDK may persist its own tokens in browser storage; these are unrelated to the removed mock session.
-- **Compatibility:** `shah_customer_data_keys` maps validated UUIDs to their first local email bucket on this browser, preserving wishlist/custom-request access across email changes. Addresses and orders no longer use this map. It never authenticates anyone. Local custom requests also record `customerId` and remain device-local.
+- **Compatibility:** `shah_customer_data_keys` maps validated UUIDs to their first local email bucket on this browser, preserving wishlist access across email changes. Addresses, orders, and custom requests no longer use this map. It never authenticates anyone.
 - **Cart:** `shah_cart` remains guest-accessible and unchanged by authentication.
 - **Orders:** Supabase `orders.user_id` references Auth UUID; `order_items.order_id` references the order. Order History never trusts `shah_orders` or `shah_last_order`. The latter caches only the most recent successfully saved receipt for confirmation. `sessionStorage` temporarily holds stable IDs and the checkout snapshot for retry; it contains no credentials and is cleared after successful checkout.
-- **Custom requests:** Custom order inquiries are stored under `shah_custom_order_requests` keyed by user email.
+- **Custom requests:** Supabase `public.custom_order_requests` is the sole source of truth, keyed by Auth UUID for customers or null `user_id` plus `guest_email` for guests. Legacy `shah_custom_order_requests` is ignored, retained, and never automatically imported.
 - **Wishlist:** Each email key stores an array of wishlist items in `shah_wishlist`.
 - **Saved addresses:** Supabase `public.addresses` is the sole source of truth, owned by `auth.users.id` through `user_id`. Existing `shah_saved_addresses` contents remain inert; no automatic import of browser/mock data occurs. Customers can deliberately re-enter addresses using the validated form.
 
@@ -489,10 +491,10 @@ All favicon assets are generated from `Images/Logo.png` (699×699 px) using the 
 1. **Payment Gateway Integration:**
    - Integrate local Pakistani payment gateways (JazzCash, Easypaisa, PayFast) and international credit card processors (Stripe / PayPal API).
 2. **Customer Backend Migration:**
-   - Customer Auth, profiles, saved addresses, orders, and order items are implemented with Supabase. Next migrate wishlist and custom requests using `auth.users.id`.
+   - Customer Auth, profiles, saved addresses, orders, order items, and custom requests are implemented with Supabase. Wishlist/cart persistence and transactional checkout remain future work.
    - Add transactional order submission with server-side pricing/cart/inventory verification, reference uploads, and payment webhooks.
 3. **Admin Dashboard Extensions:**
-   - Product and order/status management are implemented in the unlisted Supabase admin pages. Future work: custom order inquiries, tracking details, and fulfillment notifications.
+   - Product, order/status, and custom request management are implemented in the unlisted Supabase admin pages. Future work: tracking details and fulfillment notifications.
 4. **Transactional Email Service:**
    - Integrate PHPMailer / SendGrid API to automatically send order confirmation receipts and tracking links to customer emails.
 5. **WhatsApp One-Click Order Direct Link:**
@@ -506,7 +508,17 @@ The `products` table powers the Latest Work section on `index.html`. `js/product
 
 The project URL and public anon key in `js/supabase-client.js` are intentionally browser-visible. Never commit service-role keys, passwords, or privileged credentials.
 
-### Customer profiles and manual setup
+### Custom order requests: existing schema and verification
+
+The owner's existing `public.custom_order_requests` table is reused without schema or policy changes. It stores UUID `id`, nullable Auth `user_id`, guest_email, full_name, email, phone, order_type, dimensions, color_palette, occasion, description, budget_range, timeline, nullable date specific_date, text-array reference_image_urls, status, created_at and updated_at. The owner panel advances updated_at when saving a status.
+
+The supplied RLS policies allow authenticated customer SELECT/INSERT only where `auth.uid() = user_id`, anonymous INSERT only with null user_id, and owner SELECT/UPDATE across all rows using the UUID in `js/admin-config.js`. Guests have no SELECT and customers have no UPDATE policy. Client checks supplement these database policies; they do not replace them. **No new SQL file or remote configuration change is required if the supplied table, policies and table grants are already deployed.** Verify RLS and these five policies in Database → Policies, and verify anon INSERT and authenticated SELECT/INSERT/UPDATE grants as appropriate; grants alone do not bypass RLS. Existing `custom-order-images` upload/public-read configuration is reused unchanged.
+
+`tests/custom-orders-browser.cjs` covers guest/customer inserts, upload-before-insert, retained data on failures, upload reuse, repeated-click protection, two customer histories, retries, reference URL safety, owner details/status/pagination and profile widths 1440/1024/900/768/480/393/360px. `tests/custom-orders-sql.cjs` runs the supplied schema/policy fixture in local PostgreSQL (the same temporary PGlite dependency described below), checking guest INSERT without RETURNING, anonymous read denial, two-customer isolation, denied customer updates and owner access/status changes. Both passed on 2026-09-17, as did unchanged admin product regressions and the order browser suite. These tests mock browser SDK responses or use local SQL; they do not verify the deployed database or actual Storage delivery.
+
+Live verification remains required: submit identifiable requests with images as customer A, customer B and a guest; inspect stored URLs and guest ownership fields, reload each customer history, verify cross-customer reads/updates are denied, then open all three as the owner and change a status. Reload the affected customer's history to verify persistence. No signed-in live browser was available for these checks.
+
+### Customer profile setup details
 
 Phase 2 uses the existing schema unchanged: `id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`, `full_name TEXT`, `email TEXT`, `phone TEXT`, `created_at TIMESTAMPTZ DEFAULT now()`, and `updated_at TIMESTAMPTZ DEFAULT now()`. There are no password columns. **No new SQL migration is required if Phase 1 setup is already applied.** The existing `supabase/customer-auth.sql` is safe to rerun for this schema: it preserves rows and replaces its named policies/function/trigger.
 
@@ -590,9 +602,10 @@ Phase 2 dependency map (audited before implementation):
 | Navbar and account header | Cached full_name; Auth email initial if unavailable; safe text rendering |
 | Account Settings in `js/script.js` | Database name/phone; Auth email/password APIs; retries and unified toast |
 | Checkout | Restored current checkout values, empty-field profile contact prefill, then Supabase default-address fields (Phase 3) |
-| `js/custom-order.js` | Shared contact prefill only into empty fields; local request submission unchanged |
+| `js/custom-order.js` | Shared empty-field contact prefill; validated identity, Storage uploads then database insert |
 | Orders | Shared database service; UUID ownership and nested order items; local confirmation cache only |
-| Wishlist/custom requests | Existing UUID/email-bucket compatibility; still localStorage-backed |
+| Wishlist | Existing UUID/email-bucket compatibility; still localStorage-backed |
+| Custom requests | Supabase UUID-owned history and real status; guests INSERT only; owner sees all |
 | Saved addresses (Phase 3) | Shared database service keyed by authenticated UUID; no email-bucket storage |
 | Admin | Existing independent owner validation and RLS; no customer role grants |
 
@@ -625,7 +638,17 @@ Validation on 2026-09-14: customer, admin, shop, and gallery browser suites pass
 
 The status selector supports Processing, Shipped, Delivered, and Cancelled. Save uses the row ID and previously displayed status to reject stale changes, shows progress, and confirms success using the existing admin toast. Failed loads/saves show an inline explanation and Refresh Orders retry. Customer-owned order filters are confined to customer history; the owner panel deliberately has no user_id filter. All database text is escaped, and image URLs permit only HTTP(S). Existing product management and owner authentication behavior remain intact; no new session listener is introduced.
 
+### Custom Order Management
+
+`admin.html` includes an isolated `js/admin-custom-orders.js` panel initialized after the existing owner gate; each load/save revalidates the owner. It lists all customer and guest requests newest first with 25-row pagination, name/email/type/date/account/image count and status. Expand details to inspect the full brief, contact fields and reference thumbnails. Four status options match customer tracking; Save checks the previously displayed status, disables duplicate actions, updates the timestamp, and shows the existing admin toast. Failed loads/saves retain actionable Refresh/retry guidance. Database text is escaped and image links accept only HTTP(S). Product/order management and admin authorization remain unchanged.
+
 ## 11. Change Log
+
+### [2026-09-17] - Supabase Custom Requests and Owner Management
+
+- Replaced custom-request localStorage submission/history with the existing Supabase table; legacy data remains untouched and is not imported. Validated customer identity and guest ownership use the supplied schema/RLS.
+- Preserved form/profile presentation and Storage upload paths. Fixed the shared-client binding, removed guest-incompatible INSERT returning queries, wait for every image upload, retain failed submissions and reuse completed uploads on same-page retry.
+- Added real four-stage tracking, query retry states, and owner request details/images/status controls with 25-row pagination. Added browser and SQL policy tests and documented live verification requirements and recovery limits.
 
 ### [2026-09-17] - Google Fonts Loaded from Every HTML Head
 
@@ -770,6 +793,8 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
 - **Informational Payment Summary:** Replaced selector cards with an accessible, non-interactive "Payment Method: Cash on Delivery" summary row within the order summary block.
 - **Simplified Client Logic & Confirmation:** Updated `js/script.js` to use a constant `selectedPaymentMethod = 'cod'`, cleanly passing it through order persistence without branching. Simplified `order-confirmation.html` modal rendering to directly display Cash on Delivery and removed bank-transfer WhatsApp receipt notes.
 - **Documentation & Limitations:** Cleaned up `README.md` to remove obsolete references to simulated card gateways, manual bank verification, and off-invoice routing numbers.
+- **Historical orders:** Profile and admin retain readable labels for previously stored bank/card methods; new checkout submissions always send `cod`. The `payment_method` text field and database schema remain unchanged. The confirmation receipt displays Cash on Delivery directly.
+- **Verification:** `node tests/orders-browser.cjs` passed checks for absent payment selectors/details, the informational COD row, the persisted `payment_method: 'cod'` request, confirmation without bank/WhatsApp notes, readable COD and historical payment labels in profile/admin, cart continuity, retries, cancellation, pagination, and responsive layouts. Syntax and diff checks passed. Supabase responses were mocked; no live database order was created during this verification.
 
 ### [2026-09-10] — Product Card "+" Add-to-Cart Button Decoupling
 - **Decoupled '+' Add to Cart Button from Quick View:** Removed the duplicate `trigger-quick-view` class from the `.artwork-detail-btn` "+" icon button across all hardcoded featured cards in `index.html` and dynamic card templates in `js/product-loader.js` (inherited by `shop.html`). Clicking the "+" button now exclusively adds the item to the cart and shows the success toast without simultaneously triggering the Quick View modal.
