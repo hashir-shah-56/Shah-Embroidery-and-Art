@@ -13,6 +13,13 @@ function requestsMock(owner) {
   fixture.uploads = 0;
   supabaseClient.storage = {from:()=>({upload:async()=>{fixture.uploads++;if(fixture.mode==='upload')return {error:{code:'denied'}};return {};},getPublicUrl:()=>({data:{publicUrl:location.origin+'/Images/Logo.png'}})})};
   supabaseClient.from = table => {
+    if(table==='products') {
+      const query=original(table),select=query.select.bind(query);
+      query.select=columns=>columns==='category'
+        ? Promise.resolve({data:JSON.parse(localStorage.getItem('test-categories')||'["Hoop Art","hoop art"," Zari ","other"]')?.map(category=>({category})),error:null})
+        : select(columns);
+      return query;
+    }
     if(table!=='custom_order_requests')return original(table);
     let action='read',payload,filters=[],single=false,start=0,end=Infinity,returning=false;
     const q={ select(){returning=true;return this;},order(){return this;},eq(k,v){filters.push([k,v]);return this;},range(a,b){start=a;end=b;return this;},single(){single=true;return this;},insert(v){action='insert';payload=v;return this;},update(v){action='update';payload=v;return this;},then(resolve,reject){return Promise.resolve().then(async()=>{
@@ -42,7 +49,7 @@ await context.route('**/js/supabase-client.js',r=>r.fulfill({contentType:'applic
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 const go=async file=>{await page.goto(base+'/'+file);if(!file.startsWith('admin'))await page.evaluate(()=>customerAuth.ready);};
 const identity=id=>page.evaluate(id=>{localStorage.setItem('test-session',JSON.stringify({id,email:'test@example.com',user_metadata:{full_name:'Test Customer'}}));localStorage.setItem('test-profile',JSON.stringify({id,full_name:'Test Customer',email:'test@example.com',phone:'03001234567'}));},id);
-const fill=async()=>{for(const [id,value]of Object.entries({customName:'Test Customer',customEmail:'TEST@EXAMPLE.COM',customPhone:'03001234567',customDetails:'A floral hoop in sage and gold',customDimensions:'12 inches',customPalette:'Sage and gold'}))await page.locator('#'+id).fill(value);await page.locator('label[for=typeHoop]').click();};
+const fill=async()=>{for(const [id,value]of Object.entries({customName:'Test Customer',customEmail:'TEST@EXAMPLE.COM',customPhone:'03001234567',customDetails:'A floral hoop in sage and gold',customDimensions:'12 inches',customPalette:'Sage and gold'}))await page.locator('#'+id).fill(value);await page.locator('input[name=customOrderType][value='+JSON.stringify('Hoop Art')+'] + label').click();};
 const submit=()=>page.locator('#customOrderSubmit').click();const db=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-requests')||'[]'));
 await go('custom-order.html');await page.evaluate(()=>localStorage.setItem('shah_custom_order_requests','legacy untouched'));await fill();
 await page.locator('#customReferenceImages').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6L8AAAAASUVORK5CYII=','base64')});
@@ -60,6 +67,18 @@ await identity(b);await go('profile.html#custom-orders');await page.locator('.cu
 for(const width of[1440,1024,900,768,480,393,360]){await page.setViewportSize({width,height:850});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
 await identity(owner);await go('admin.html');await page.locator('#customOrderStatus-0').waitFor();
 await page.evaluate(()=>{const db=JSON.parse(localStorage.getItem('test-requests'));for(let i=0;i<24;i++)db.push({...db[0],id:crypto.randomUUID()});db[0].reference_image_urls=['javascript:alert(1)'];localStorage.setItem('test-requests',JSON.stringify(db));});await page.locator('#refreshCustomOrders').click();await page.waitForFunction(()=>document.querySelectorAll('.custom-order-status-save').length===25);await page.locator('#nextCustomOrdersPage').click();await page.waitForFunction(()=>document.querySelectorAll('.custom-order-status-save').length===2);assert.equal(await page.locator('#customOrdersBody a[href^="javascript:"]').count(),0);
-assert.deepEqual(errors,[]);console.log('PASS: two customer histories, ignored legacy data, retry state, owner sees customers and guest/images, persisted status/3-step progress, pagination, URL safety and responsive profile');
+await page.evaluate(()=>localStorage.removeItem('test-session'));
+await go('custom-order.html');await page.locator('#typeOther').waitFor();
+const categoryValues=()=>page.locator('input[name=customOrderType]').evaluateAll(inputs=>inputs.map(input=>input.value));
+assert.deepEqual(await categoryValues(),['Hoop Art','Zari','Other']);
+assert.equal((await db())[1].order_type,'Hoop Art');
+await page.evaluate(()=>localStorage.setItem('test-categories',JSON.stringify(['Zari','New Category','hoop art','Other','OTHER'])));
+await go('custom-order.html');await page.locator('#typeOther').waitFor();
+assert.deepEqual(await categoryValues(),['hoop art','New Category','Zari','Other']);
+await page.evaluate(()=>localStorage.setItem('test-categories','[]'));
+await go('custom-order.html');await page.locator('#typeOther').waitFor();assert.deepEqual(await categoryValues(),['Other']);
+for(const [id,value]of Object.entries({customName:'Test Customer',customEmail:'test@example.com',customPhone:'03001234567',customDetails:'A new kind of custom embroidery'}))await page.locator('#'+id).fill(value);
+await page.locator('label[for=typeOther]').click();await submit();await page.locator('#customOrderSuccess.visible').waitFor();assert.equal((await db()).at(-1).order_type,'Other');
+assert.deepEqual(errors,[]);console.log('PASS: two customer histories, ignored legacy data, retry state, owner management, responsive profile; shared categories deduplicated/sorted, new category after reload, Other once/last, empty catalog and exact submitted category values');
 }finally{await browser?.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

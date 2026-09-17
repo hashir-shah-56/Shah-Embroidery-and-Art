@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const nameInput = document.getElementById('customName');
   const emailInput = document.getElementById('customEmail');
   const phoneInput = document.getElementById('customPhone');
-  const typeInputs = [...form.querySelectorAll('input[name="customOrderType"]')];
+  const typeGrid = document.getElementById('customOrderTypes');
   const typeError = document.getElementById('error-customOrderType');
   const submitButton = document.getElementById('customOrderSubmit');
   const timeline = document.getElementById('customTimeline');
@@ -21,20 +21,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const uploadedFiles = new WeakMap();
 
   const updateSubmitState = () => {
-    const hasType = typeInputs.some(input => input.checked);
+    const hasType = Boolean(form.querySelector('input[name="customOrderType"]:checked'));
     const fieldsValid = [nameInput, emailInput, phoneInput, document.getElementById('customDetails')].every(field => field && !field.classList.contains('form-input-error') && field.value.trim());
     submitButton.disabled = submitting || !(hasType && fieldsValid);
   };
 
   const setTypeState = (showError = true) => {
-    const hasType = typeInputs.some(input => input.checked);
+    const hasType = Boolean(form.querySelector('input[name="customOrderType"]:checked'));
     if (showError || hasType) typeError.textContent = hasType ? '' : 'Please choose an order type.';
     updateSubmitState();
   };
 
   window.customerAuth.populateProfileFields({ name: 'customName', email: 'customEmail', phone: 'customPhone' });
 
-  typeInputs.forEach(input => input.addEventListener('change', setTypeState));
+  typeGrid.addEventListener('change', () => setTypeState());
   timeline.addEventListener('change', () => {
     dateGroup.hidden = timeline.value !== 'specific';
     dateInput.required = timeline.value === 'specific';
@@ -182,5 +182,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  setTypeState(false);
+  const categories = await window.fetchCategories();
+  // Keep a single canonical Other last, even if the catalog contains that category.
+  const choices = [...categories.filter(category => category.toLowerCase() !== 'other'), 'Other'];
+  const cards = choices.map((category, index) => {
+    const card = document.createElement('div');
+    card.className = 'custom-order-choice';
+    const input = document.createElement('input');
+    input.type = 'radio'; input.name = 'customOrderType'; input.required = true;
+    input.id = category === 'Other' ? 'typeOther' : `customOrderType-${index}`;
+    input.value = category;
+    input.setAttribute('aria-describedby', 'error-customOrderType');
+    const label = document.createElement('label');
+    label.htmlFor = input.id; label.textContent = category;
+    card.append(input, label);
+    return card;
+  });
+  typeGrid.replaceChildren(...cards);
+  typeGrid.setAttribute('aria-busy', 'false');
   setTypeState(false);
 });

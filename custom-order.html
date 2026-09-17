@@ -86,22 +86,8 @@
                     <h2 class="custom-order-card-heading">B. Order Details</h2>
                     <fieldset class="form-group" style="border: none; padding: 0; margin: 0;">
                         <legend class="form-label default">Order Type / Category *</legend>
-                        <div class="custom-order-type-grid">
-                            <div class="custom-order-choice"><input type="radio" id="typeHoop" name="customOrderType"
-                                    value="Hoop Art" required><label for="typeHoop">Hoop Art</label></div>
-                            <div class="custom-order-choice"><input type="radio" id="typeWall" name="customOrderType"
-                                    value="Wall Art"><label for="typeWall">Wall Art</label></div>
-                            <div class="custom-order-choice"><input type="radio" id="typeBridal" name="customOrderType"
-                                    value="Bridal / Wedding Piece"><label for="typeBridal">Bridal / Wedding</label>
-                            </div>
-                            <div class="custom-order-choice"><input type="radio" id="typeIslamic" name="customOrderType"
-                                    value="Islamic Calligraphy Art"><label for="typeIslamic">Islamic Calligraphy</label>
-                            </div>
-                            <div class="custom-order-choice"><input type="radio" id="typePortrait"
-                                    name="customOrderType" value="Portrait Embroidery"><label
-                                    for="typePortrait">Portrait Embroidery</label></div>
-                            <div class="custom-order-choice"><input type="radio" id="typeOther" name="customOrderType"
-                                    value="Other"><label for="typeOther">Other</label></div>
+                        <div class="custom-order-type-grid" id="customOrderTypes" aria-busy="true">
+                            <span role="status">Loading categories...</span>
                         </div><span class="form-error-text" id="error-customOrderType"></span>
                     </fieldset>
                     <div class="form-row">
@@ -226,8 +212,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/product-loader.js"></script>
   <script src="js/script.js?v=20260914-customer-auth"></script>
-    <script src="js/custom-order.js?v=20260903-custom-order-2"></script>
+    <script src="js/custom-order.js?v=20260917-dynamic-categories"></script>
 </body>
 
 </html>
