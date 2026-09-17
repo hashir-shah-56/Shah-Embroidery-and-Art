@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shah Embroidery & Art - Main Interactive Logic
  * Syeda Tauseefa Abrar (16 Years Craftsmanship)
  */
@@ -1275,7 +1275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="order-detail-box">
                       <span class="order-detail-label">Payment Method</span>
-                      <div>${escapeHTML(order.paymentMethod || 'Cash on Delivery')}</div>
+                      <div>${escapeHTML(({ cod: 'Cash on Delivery', bank: 'Direct Bank Transfer', card: 'Credit / Debit Card Online' })[order.paymentMethod] || order.paymentMethod || 'Cash on Delivery')}</div>
                     </div>
                     <div class="order-detail-box">
                       <span class="order-detail-label">Contact</span>
@@ -2420,21 +2420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   // Payment Method Selection Toggle
-  let selectedPaymentMethod = 'cod';
-  const paymentCards = document.querySelectorAll('.payment-card');
-  const bankDetailsBox = document.getElementById('bankTransferDetails');
-  const cardMockBox = document.getElementById('cardMockDetails');
-
-  paymentCards.forEach(card => {
-    card.addEventListener('click', () => {
-      paymentCards.forEach(c => c.classList.remove('is-selected'));
-      card.classList.add('is-selected');
-      selectedPaymentMethod = card.getAttribute('data-method');
-
-      if (bankDetailsBox) bankDetailsBox.style.display = selectedPaymentMethod === 'bank' ? 'block' : 'none';
-      if (cardMockBox) cardMockBox.style.display = selectedPaymentMethod === 'card' ? 'block' : 'none';
-    });
-  });
+  const selectedPaymentMethod = 'cod';
 
   const checkoutCountryField = document.getElementById('checkoutCountry');
   if (checkoutCountryField) {
@@ -2555,7 +2541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Database persistence only. Online payment remains the existing simulated gateway.
+  // Persist the COD order before completing checkout.
   const processPayment = async (orderData) => {
     let saved;
     try { saved = await orderService.place(orderData); }
@@ -2747,10 +2733,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (confirmCustomerHeading) confirmCustomerHeading.textContent = `Thank You for Your Order, ${order.customer.name}!`;
     if (confirmOrderId) confirmOrderId.textContent = `#${order.orderId}`;
 
-    let methodLabel = 'Cash on Delivery';
-    if (order.paymentMethod === 'bank') methodLabel = 'Direct Bank Transfer';
-    if (order.paymentMethod === 'card') methodLabel = 'Credit / Debit Card Online';
-
     let itemsRecapHtml = '';
     order.items.forEach(item => {
       itemsRecapHtml += `
@@ -2784,8 +2766,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         <div class="receipt-section-label">Payment Method</div>
         <div class="receipt-text">
-          <strong>${methodLabel}</strong>
-          ${order.paymentMethod === 'bank' ? '<br><small style="color: var(--accent-gold-hover);">ðŸ’¡ Please share bank transfer receipt via WhatsApp for verification.</small>' : ''}
+          <strong>Cash on Delivery</strong>
         </div>
       `;
       prepareImageSkeletons();

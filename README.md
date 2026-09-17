@@ -291,11 +291,9 @@ Product categories are fully dynamic and driven entirely by real category names 
 - **Form Sections:**
   1. **Contact Information:** Full Name, Phone Number, Email Address.
   2. **Delivery Address:** Street Address, City, Postal Code, Country Selector.
-  3. **Payment Method Selection:**
-     - **Cash on Delivery (COD):** Active default for deliveries in Pakistan.
-     - **Direct Bank Transfer:** Displays Meezan Bank account title, account number, and IBAN details, instructing user to share receipt on WhatsApp.
-     - **Credit / Debit Card (Pay Online):** Simulated gateway interface with card number and CVC fields (placeholder for future gateway SDK).
-  4. **Read-Only Order Summary Sidebar:** Live itemized recap, shipping status, and estimated total price.
+  3. **Payment Method:**
+     - **Cash on Delivery (COD):** The sole supported payment method. Rendered as a non-interactive informational line in the order summary, applying Hick's Law to eliminate cognitive friction when there is only one choice.
+  4. **Read-Only Order Summary Sidebar:** Live itemized recap, shipping status, payment method line, and estimated total price.
 - **Validation:** Validates required fields, phone numbers, and email format before processing.
 - **Contact/address prefill:** Restores pending checkout data first, then fills empty name/email/phone fields from Supabase profile/Auth state. A single shared query loads the current customer's Supabase addresses and fills empty delivery fields from the default. Address line 2 and province join the existing street field. Typed values, explicitly cleared fields, and restored country values are preserved during slow loading. Country defaults to Pakistan only when no saved/restored/typed country applies. Load failures offer Retry and leave manual entry usable.
 - **Saved-address selection:** The audited checkout has no address selector or “Save this address” checkbox; Phase 3 preserves that UI. Change the default under Profile → Saved Addresses before opening checkout, or enter a one-time delivery address directly. Checkout never saves/updates an address implicitly. Cart persistence remains local.
@@ -340,7 +338,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 - [x] **Gallery Category Filtering:** Animated tab filter for portfolio items.
 - [x] **Standalone Custom Order Form:** Dedicated custom-order page with category cards, optional budget/timeline choices, client-side reference previews, and localStorage-backed submission.
 - [x] **Checkout Form Validation:** Real-time client-side validation for required fields, email format, and phone inputs.
-- [x] **Payment Method Toggling:** Interactive selection between COD, Direct Bank Transfer (Meezan Bank details), and Mock Card Online Payment.
+- [x] **Cash on Delivery Checkout:** Simplified checkout offering Cash on Delivery exclusively, eliminating unnecessary selector friction.
 - [x] **Order Receipt Generation:** Automatic generation of order ID `#SE-XXXXX`, receipt card breakdown, and date stamping in `localStorage` (`shah_last_order`).
 - [x] **Scroll Reveal Animations:** `IntersectionObserver`-powered fade-in-up animations for cards and sections.
 - [x] **Standalone Cart, Checkout & Confirmation:** Dedicated pages use a local cart, Supabase order persistence, and the existing local confirmation receipt cache.
@@ -357,18 +355,15 @@ Product categories are fully dynamic and driven entirely by real category names 
 > [!WARNING]
 > **CURRENT FRONT-END SCOPE & GAPS**
 > 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, profiles, saved addresses, orders, and order items. Cart, wishlist, and custom requests still require database migration. Legacy `shah_orders` is ignored, retained, and never imported; `shah_last_order` is only a receipt cache. Address setup and the order-cancellation supplement require manual SQL deployment; local tests do not prove live configuration.
-> 2. **Simulated Payment Gateway:** The *Pay Online (Credit / Debit Card)* option is currently a mock UI placeholder. Real transaction processing via gateways (e.g., JazzCash, Easypaisa, PayFast, Stripe) is not yet integrated.
-> 3. **No Order Email Dispatch:** The receipt notification remains a simulation. Supabase Auth confirmation emails are separate and depend on dashboard/email-provider configuration.
-> 4. **Manual Bank Verification:** Direct Bank Transfer requires manual verification by having the user send their payment screenshot via WhatsApp.
-> 5. **Inventory Limits:** Featured products are filtered by Supabase `in_stock`; checkout does not reserve or decrement stock.
-> 6. **Reference Image Storage:** Custom-order reference files are previewed locally and only their filenames are stored. Persistent file uploads require backend storage.
-> 7. **Routing Numbers Issued Off-Invoice:** The *Bank Transfer* pane discloses the recipient bank/title upfront but defers the account number and IBAN to the emailed invoice (deliberately avoiding broadcasting routable figures publicly). Wire the studio's real collection details into `checkout.html` when ready to automate.
-> 8. **Social Profiles Point to Handle Slugs:** Footer social icons link to `instagram.com/shah-embroidery`, `facebook.com/shah-embroidery`, and `pinterest.com/shah-embroidery`. Confirm these slugs map to the studio's live profiles (handles assumed from owner-provided slug).
-> 10. **Product Loading Fallback:** Featured cards retain their hardcoded content if the Supabase query fails or returns no rows.
-> 11. **Currency Display:** Prices now display as PKR (`Rs.`) without exchange-rate conversion. Historical order records retain the currency-formatted string stored when each order was created.
-> 12. **Two-request order creation:** The requested header-then-items API flow is not an atomic database transaction. An item failure can leave an unfinished Processing header. A tab-local `sessionStorage` retry journal reuses order/item UUIDs after failures, lost responses, and refreshes. Changed cart/contact details require retrying the original details or cancelling that unfinished order first. Closing the tab can discard this journal; unfinished headers then need review. Admin details warn against fulfilling rows without items. A transactional server-side order RPC is future work.
-> 13. **Order validation and payment:** Ownership is enforced by RLS, but the supplied insert policies accept customer-provided prices, totals, and item snapshots. They do not prove catalog pricing, payment, or stock availability. Treat totals as unverified until server-side pricing/inventory/payment validation is implemented. No card fields or credentials are written to order tables.
-> 14. **Password recovery deployment:** Add the production/local `reset-password.html` URLs to Supabase's redirect allowlist and deploy the page before sending reset emails. Email delivery, provider limits, and expiry depend on Auth configuration. Local mocked tests do not establish actual delivery or successful login with a changed live password.
+> 2. **No Order Email Dispatch:** The receipt notification remains a simulation. Supabase Auth confirmation emails are separate and depend on dashboard/email-provider configuration.
+> 3. **Inventory Limits:** Featured products are filtered by Supabase `in_stock`; checkout does not reserve or decrement stock.
+> 4. **Reference Image Storage:** Custom-order reference files are previewed locally and only their filenames are stored. Persistent file uploads require backend storage.
+> 5. **Social Profiles Point to Handle Slugs:** Footer social icons link to `instagram.com/shah-embroidery`, `facebook.com/shah-embroidery`, and `pinterest.com/shah-embroidery`. Confirm these slugs map to the studio's live profiles (handles assumed from owner-provided slug).
+> 6. **Product Loading Fallback:** Featured cards retain their hardcoded content if the Supabase query fails or returns no rows.
+> 7. **Currency Display:** Prices now display as PKR (`Rs.`) without exchange-rate conversion. Historical order records retain the currency-formatted string stored when each order was created.
+> 8. **Two-request order creation:** The requested header-then-items API flow is not an atomic database transaction. An item failure can leave an unfinished Processing header. A tab-local `sessionStorage` retry journal reuses order/item UUIDs after failures, lost responses, and refreshes. Changed cart/contact details require retrying the original details or cancelling that unfinished order first. Closing the tab can discard this journal; unfinished headers then need review. Admin details warn against fulfilling rows without items. A transactional server-side order RPC is future work.
+> 9. **Order validation and payment:** Ownership is enforced by RLS, but the supplied insert policies accept customer-provided prices, totals, and item snapshots. They do not prove catalog pricing, payment, or stock availability. Treat totals as unverified until server-side pricing/inventory/payment validation is implemented.
+> 10. **Password recovery deployment:** Add the production/local `reset-password.html` URLs to Supabase's redirect allowlist and deploy the page before sending reset emails. Email delivery, provider limits, and expiry depend on Auth configuration. Local mocked tests do not establish actual delivery or successful login with a changed live password.
 
 ---
 
@@ -768,6 +763,13 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
 - **Success Toast Added:** The card add-to-cart path now calls the unified `showToast` ("Added [title] to your cart."). Previously `addToCart` only called `openCartModal()`, which is a no-op on `index.html` (no `#cartModal` element there), leaving the badge as the only feedback.
 - **Quick View Toast Consistency:** The Quick View modal Add to Cart handler now calls the same unified `showToast` after adding the artwork, so this entry point also gives immediate success feedback.
 - **Verified:** With browser touch-capability simulation, a single tap on multiple cards updates the cart badge and shows the success toast, including after switching a gallery filter tab; tapping the Quick View button does not add to cart.
+
+### [2026-09-17] — Cash on Delivery (COD) Checkout Simplification
+- **Streamlined Payment Experience:** Simplified the checkout flow to offer Cash on Delivery (COD) exclusively, applying Hick's Law to eliminate cognitive friction and decision fatigue when only one payment method is supported.
+- **Removed Multi-Payment UI:** Removed interactive payment method selector cards, Meezan Bank transfer details box (`#bankTransferDetails`), and mock credit/debit card gateway inputs (`#cardMockDetails`) from `checkout.html` and `css/checkout.css`.
+- **Informational Payment Summary:** Replaced selector cards with an accessible, non-interactive "Payment Method: Cash on Delivery" summary row within the order summary block.
+- **Simplified Client Logic & Confirmation:** Updated `js/script.js` to use a constant `selectedPaymentMethod = 'cod'`, cleanly passing it through order persistence without branching. Simplified `order-confirmation.html` modal rendering to directly display Cash on Delivery and removed bank-transfer WhatsApp receipt notes.
+- **Documentation & Limitations:** Cleaned up `README.md` to remove obsolete references to simulated card gateways, manual bank verification, and off-invoice routing numbers.
 
 ### [2026-09-10] — Product Card "+" Add-to-Cart Button Decoupling
 - **Decoupled '+' Add to Cart Button from Quick View:** Removed the duplicate `trigger-quick-view` class from the `.artwork-detail-btn` "+" icon button across all hardcoded featured cards in `index.html` and dynamic card templates in `js/product-loader.js` (inherited by `shop.html`). Clicking the "+" button now exclusively adds the item to the cart and shows the success toast without simultaneously triggering the Quick View modal.

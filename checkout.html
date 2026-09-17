@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="Securely complete your purchase of handmade embroidery and custom textile art at Shah Embroidery &amp; Art. Fast, simple checkout with multiple payment options.">
+        content="Securely complete your purchase of handmade embroidery and custom textile art at Shah Embroidery &amp; Art. Fast, simple checkout with Cash on Delivery.">
     <title>Checkout | Shah Embroidery &amp; Art</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="Images/favicon/favicon-32x32.png">
@@ -117,53 +117,7 @@
                                         hidden></span></div>
                             </div>
                         </div>
-                        <div class="form-section-group">
-                            <h4 class="form-group-heading">3. Payment Method</h4>
-                            <div class="payment-options-grid">
-                                <button class="payment-card is-selected" data-method="cod" type="button">
-                                    <div class="payment-card-radio"></div>
-                                    <div class="payment-card-content">
-                                        <div class="payment-card-title"><i class="fa-solid fa-money-bill-wave"></i> Cash
-                                            on Delivery</div>
-                                        <div class="payment-card-desc">Pay with cash where delivery service is
-                                            available; availability outside Pakistan is confirmed separately.
-                                        </div>
-                                    </div>
-                                </button>
-                                <button class="payment-card" data-method="bank" type="button">
-                                    <div class="payment-card-radio"></div>
-                                    <div class="payment-card-content">
-                                        <div class="payment-card-title"><i class="fa-solid fa-building-columns"></i>
-                                            Direct Bank Transfer</div>
-                                        <div class="payment-card-desc">Transfer directly to our Meezan Bank account.
-                                        </div>
-                                    </div>
-                                </button>
-                                <button class="payment-card" data-method="card" type="button">
-                                    <div class="payment-card-radio"></div>
-                                    <div class="payment-card-content">
-                                        <div class="payment-card-title"><i class="fa-solid fa-credit-card"></i> Credit /
-                                            Debit Card</div>
-                                        <div class="payment-card-desc">Online payment via Card / Mobile Wallet.</div>
-                                    </div>
-                                </button>
-                            </div>
-                            <div class="payment-details-box" id="bankTransferDetails" style="display:none">
-                                <div class="bank-details-title">Bank Transfer Instructions</div>
-                                <div class="bank-details-row"><span>Bank Name:</span><strong>Meezan Bank Ltd</strong>
-                                </div>
-                                <div class="bank-details-row"><span>Account Title:</span><strong>Syeda Tauseefa
-                                        Abrar</strong></div>
-                                <div class="bank-details-row"><span>Account
-                                        Number:</span><strong>Provided on your emailed invoice</strong></div>
-                                <div class="bank-details-row"><span>IBAN:</span><strong>Shared securely with your
-                                        order confirmation</strong></div>
-                            </div>
-                            <div class="payment-details-box" id="cardMockDetails" style="display:none">
-                                <div class="bank-details-title">Credit / Debit Card Details (Mock Gateway)</div><input
-                                    type="text" class="form-input" disabled value="•••• •••• •••• 4242">
-                            </div>
-                        </div><button type="submit" class="btn btn-primary" id="btnPlaceOrder"
+                        <button type="submit" class="btn btn-primary" id="btnPlaceOrder"
                             style="width:100%;margin-top:20px">Place Order</button>
                     </form>
                 </div>
@@ -172,6 +126,7 @@
                         <h4 class="summary-card-title">Order Summary</h4>
                         <div class="checkout-summary-items" id="checkoutSummaryItems"></div>
                         <div class="summary-totals-box">
+                            <div class="summary-total-row checkout-payment-info"><span class="checkout-payment-label">Payment Method</span><strong class="checkout-payment-value" style="color:var(--text-primary)">Cash on Delivery</strong></div>
                             <div class="summary-total-row"><span>Subtotal</span><span id="checkoutSubtotal">$0.00</span>
                             </div>
                             <div class="summary-total-row"><span>Shipping</span><span
