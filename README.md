@@ -48,6 +48,8 @@ Welcome to the official repository for **Shah Embroidery & Art**. This document 
 
 ### Typography
 
+- **Loading:** All 11 HTML pages load Google Fonts through a stylesheet `<link>` in `<head>`, before other stylesheets, with preconnects to `fonts.googleapis.com` and `fonts.gstatic.com` (the latter uses `crossorigin`). The shared request includes Cormorant Garamond normal 400/500/600/700 and italic 400, Plus Jakarta Sans 300/400/500/600/700, and `display=swap`. No CSS font `@import` remains. Existing family declarations, sizes, and weights are unchanged; fallback stacks still cover loading or network failures.
+
 - **Heading Font:** `'Cormorant Garamond', Georgia, serif`
   - Used for section titles (`.section-title`), hero heading (`.hero-title`), modal headers, and brand logos.
   - Font weights utilized: `400` (Regular), `500` (Medium), `600` (Semi-Bold), `700` (Bold).
@@ -362,7 +364,6 @@ Product categories are fully dynamic and driven entirely by real category names 
 > 6. **Reference Image Storage:** Custom-order reference files are previewed locally and only their filenames are stored. Persistent file uploads require backend storage.
 > 7. **Routing Numbers Issued Off-Invoice:** The *Bank Transfer* pane discloses the recipient bank/title upfront but defers the account number and IBAN to the emailed invoice (deliberately avoiding broadcasting routable figures publicly). Wire the studio's real collection details into `checkout.html` when ready to automate.
 > 8. **Social Profiles Point to Handle Slugs:** Footer social icons link to `instagram.com/shah-embroidery`, `facebook.com/shah-embroidery`, and `pinterest.com/shah-embroidery`. Confirm these slugs map to the studio's live profiles (handles assumed from owner-provided slug).
-> 9. **Font Fallbacks in Effect:** Declared webfonts (Cormorant Garamond / Plus Jakarta Sans) are not bundled or hot-linked; browsers silently fall back to Georgia / system sans-serif. Load the families (self-host or Google Fonts) to activate the intended typography.
 > 10. **Product Loading Fallback:** Featured cards retain their hardcoded content if the Supabase query fails or returns no rows.
 > 11. **Currency Display:** Prices now display as PKR (`Rs.`) without exchange-rate conversion. Historical order records retain the currency-formatted string stored when each order was created.
 > 12. **Two-request order creation:** The requested header-then-items API flow is not an atomic database transaction. An item failure can leave an unfinished Processing header. A tab-local `sessionStorage` retry journal reuses order/item UUIDs after failures, lost responses, and refreshes. Changed cart/contact details require retrying the original details or cancelling that unfinished order first. Closing the tab can discard this journal; unfinished headers then need review. Admin details warn against fulfilling rows without items. A transactional server-side order RPC is future work.
@@ -630,6 +631,12 @@ Validation on 2026-09-14: customer, admin, shop, and gallery browser suites pass
 The status selector supports Processing, Shipped, Delivered, and Cancelled. Save uses the row ID and previously displayed status to reject stale changes, shows progress, and confirms success using the existing admin toast. Failed loads/saves show an inline explanation and Refresh Orders retry. Customer-owned order filters are confined to customer history; the owner panel deliberately has no user_id filter. All database text is escaped, and image URLs permit only HTTP(S). Existing product management and owner authentication behavior remain intact; no new session listener is introduced.
 
 ## 11. Change Log
+
+### [2026-09-17] - Google Fonts Loaded from Every HTML Head
+
+- **Audit/root-cause finding:** The font import was not lost or illegally positioned: it remained on line 4 of `css/base.css`, preceded only by a valid CSS comment. Baseline Chrome requests to Google Fonts and its font-file host returned HTTP 200, and rendered-font inspection identified Cormorant Garamond on `.hero-title` and Plus Jakarta Sans on `.hero-description`. The reported fallback was not reproduced in this checkout; attributing it to the modular split or comments would be unsupported. The previous Known Limitations entry was inaccurate. See [CSS import ordering](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@import).
+- **Change:** Added both preconnects and the requested Google Fonts stylesheet link before other stylesheets in index, cart, checkout, order-confirmation, profile, custom-order, shop, admin, admin-login, 404, and reset-password HTML heads. Removed the single font import from `css/base.css`, eliminating the nested stylesheet dependency. No font-family declarations, typography styling, or application behavior changed.
+- **Verified:** Fresh local Chrome contexts for all 11 pages fetched the live Google stylesheet and font files with HTTP 200 and loaded both families. JavaScript was disabled to inspect each page's own head without authentication redirects; font requests were not mocked. Rendered-font inspection confirmed the intended homepage heading/body fonts before and after, so no typography difference was expected locally. Homepage screenshots were compared; all heads have exactly one font stylesheet before site CSS, no Google Fonts CSS import remains, and the diff check passed. This does not verify the currently deployed Netlify build or browser-specific blocking on the originally affected device.
 
 ### [2026-09-17] - Customer Forgot Password Flow
 
