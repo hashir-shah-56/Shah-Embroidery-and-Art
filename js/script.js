@@ -52,8 +52,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `<div class="skeleton-profile-list">${Array.from({ length: 2 }, () => `<div class="skeleton-profile-card skeleton-profile-order">${skeletonText('medium')}<div class="skeleton-profile-order-row"><div class="skeleton-shimmer skeleton-row-thumb"></div><div class="skeleton-row-copy">${skeletonText('long')}${skeletonText('short')}</div></div><div class="skeleton-summary-lines">${skeletonText('long')}</div></div>`).join('')}</div>`;
   };
 
-  const checkoutSkeleton = () => `<div class="skeleton-summary"><div class="skeleton-text-line medium"></div><div class="skeleton-summary-lines">${skeletonText('long')}${skeletonText('medium')}${skeletonText('long')}${skeletonText('medium')}</div></div>`;
-
   const confirmationSkeleton = () => `<div class="skeleton-summary"><div class="skeleton-text-line long"></div><div class="skeleton-summary-lines">${skeletonText('long')}${skeletonText('long')}${skeletonText('medium')}${skeletonText('long')}</div></div>`;
 
   const showDynamicSkeleton = (container, markup) => {
@@ -2663,11 +2661,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = 'cart.html?login=checkout';
       return;
     }
-    document.getElementById('checkoutPage').hidden = false;
     restorePendingCheckoutFormData();
     applyDefaultAddressToCheckout();
-    showDynamicSkeleton(document.getElementById('checkoutSummaryItems'), checkoutSkeleton());
-    finishDynamicSkeleton(document.getElementById('checkoutSummaryItems'), renderCheckoutSummarySidebar);
+    // Cart storage is synchronous: populate totals before exposing the page.
+    renderCheckoutSummarySidebar();
+    document.getElementById('checkoutPage').hidden = false;
   }
 
   if (document.querySelector('.categories-grid')) {
