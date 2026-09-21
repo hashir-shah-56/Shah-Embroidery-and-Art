@@ -140,6 +140,12 @@ ul {
   word-break: break-word;
 }
 
+.delivery-estimate {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 8px 0 12px;
+}
+
 .section-description {
   font-size: clamp(0.95rem, 1.5vw, 1.05rem);
   color: var(--text-secondary);

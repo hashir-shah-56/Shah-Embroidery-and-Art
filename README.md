@@ -275,6 +275,8 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 ### 17. Artwork Quick View Modal (`#quickViewModal`)
 - **Description:** Modal displaying enlarged artwork image, category badge, detailed price, and a prominent *Add to Cart* button.
+- **Product entry points:** Latest Work and Shop images, titles and dedicated Quick View buttons share the same modal handler. Images/titles support a single desktop click or touch tap, Enter/Space keyboard activation, pointer cursors and visible focus. The separate + control only adds to cart. Dynamic catalog refreshes rebind safely; Gallery retains its independent view-only modal.
+- **Delivery estimate:** Quick View, Cart shipping summary and Checkout shipping summary display exactly “Estimated delivery: 5-7 business days within Pakistan”. The checkout line is hidden when country is not Pakistan and restored when Pakistan is selected. **5-7 business days is a placeholder supplied for this change, pending confirmation by the owner; it is not a verified delivery commitment.**
 
 ### 18. Shopping Cart Modal Drawer (`#cartModal`)
 - **Description:** Slide-over modal displaying current cart items stored in `localStorage`.
@@ -650,6 +652,12 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
 `admin.html` includes an isolated `js/admin-custom-orders.js` panel initialized after the existing owner gate; each load/save revalidates the owner. It lists all customer and guest requests newest first with 25-row pagination, name/email/type/date/account/image count and status. Expand details to inspect the full brief, contact fields and reference thumbnails. Four status options match customer tracking; Save checks the previously displayed status, disables duplicate actions, updates the timestamp, and shows the existing admin toast. Failed loads/saves retain actionable Refresh/retry guidance. Database text is escaped and image links accept only HTTP(S). Product/order management and admin authorization remain unchanged.
 
 ## 11. Change Log
+
+### [2026-09-21] - Product Image/Title Quick View and Delivery Estimate
+
+- Made Latest Work/Shop product images and titles additional triggers for the existing Quick View handler, including keyboard and single-tap access. Preserved separate + Add to Cart behavior and Gallery interaction. Shared renderer/event wiring handles refreshed catalog cards and static fallback cards.
+- Added one consistent delivery estimate near the Quick View price and below shipping costs in Cart/Checkout, using shared muted-text styling. Checkout hides the Pakistan estimate for other countries. The 5-7-business-day timeframe remains a placeholder requiring owner confirmation.
+- Added `tests/product-browsing-browser.cjs` for both catalog pages on desktop/touch, keyboard activation, + button isolation, estimate consistency and international-country behavior. Tests use mocked SDK responses and make no live purchases or catalog changes.
 
 ### [2026-09-20] - Checkout Summary First-Render Sequencing
 

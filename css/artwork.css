@@ -68,6 +68,12 @@
   transition: var(--transition-slow);
 }
 
+.artwork-img, .artwork-title { cursor: pointer; }
+.artwork-card .artwork-img:focus-visible, .artwork-card .artwork-title:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+}
+
 .artwork-card:hover .artwork-img {
   transform: scale(1.08);
 }

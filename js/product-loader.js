@@ -19,13 +19,13 @@ function createProductCardHTML(product) {
     <div class="artwork-card" data-product-id="${/^\d+$/.test(String(product.id)) ? product.id : ''}" data-title="${product.title}" data-category="${product.category}" data-price="${priceAttr}" data-description="${descriptionAttr}">
       <div class="artwork-img-box">
         ${badgeHTML}
-        <img src="${product.image_url}" alt="${product.title}" class="artwork-img"
+        <img src="${product.image_url}" alt="${product.title}" class="artwork-img trigger-quick-view"
           onerror="this.src='https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=600&auto=format&fit=crop'">
         <button class="btn btn-primary trigger-quick-view artwork-quick-view-btn">Quick View</button>
       </div>
       <div class="artwork-details">
         <span class="artwork-category">${product.category}</span>
-        <h3 class="artwork-title">${product.title}</h3>
+        <h3 class="artwork-title trigger-quick-view">${product.title}</h3>
         <div class="artwork-footer">
           ${priceHTML}
           <button class="artwork-detail-btn" aria-label="View Artwork Details">

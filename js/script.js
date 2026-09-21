@@ -1879,13 +1879,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modalCategory = document.getElementById('quickViewCategory');
   const modalDescription = document.getElementById('quickViewDescription');
   const modalPrice = document.getElementById('quickViewPrice');
+  if (modalPrice) {
+    const estimate = document.createElement('p');
+    estimate.className = 'delivery-estimate';
+    estimate.textContent = 'Estimated delivery: 5-7 business days within Pakistan';
+    modalPrice.after(estimate);
+  }
 
   const wireQuickViewButtons = (scope = document) => {
-    scope.querySelectorAll('.trigger-quick-view').forEach(btn => {
+    scope.querySelectorAll('.trigger-quick-view, .artwork-card .artwork-img, .artwork-card .artwork-title').forEach(btn => {
       if (btn.dataset.quickViewWired) return;
       btn.dataset.quickViewWired = 'true';
+      if (btn.matches('.artwork-img, .artwork-title')) {
+        btn.tabIndex = 0;
+        btn.setAttribute('role', 'button');
+        btn.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault(); btn.click();
+          }
+        });
+      }
       btn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const card = btn.closest('.artwork-card');
         if (card && quickViewModal) {
           const title = card.getAttribute('data-title') || 'Handcrafted Artwork';
@@ -2263,6 +2279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span>Estimated Shipping</span>
             <span style="color: var(--accent-gold); font-weight: 600;">FREE (Pakistan)</span>
           </div>
+          <p class="delivery-estimate">Estimated delivery: 5-7 business days within Pakistan</p>
           ${hasCustomQuote ? `
             <div class="summary-custom-notice">
               âœ¨ Custom pieces will be quoted separately after checkout.
@@ -2434,6 +2451,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (checkoutGrandTotal) checkoutGrandTotal.textContent = formatPrice(numericSubtotal);
     if (checkoutCustomNotice) checkoutCustomNotice.style.display = hasCustomQuote ? 'block' : 'none';
     if (checkoutShippingLabel) checkoutShippingLabel.textContent = isPakistanDelivery ? 'FREE (Pakistan)' : 'Confirmed separately';
+    const deliveryEstimate = document.getElementById('checkoutDeliveryEstimate');
+    if (deliveryEstimate) deliveryEstimate.hidden = !isPakistanDelivery;
     if (checkoutCountryShippingNote) {
       checkoutCountryShippingNote.textContent = isPakistanDelivery ? '' : `Shipping availability and cost for ${country === 'Other' ? 'your region' : country} will be confirmed separately.`;
       checkoutCountryShippingNote.hidden = isPakistanDelivery;
