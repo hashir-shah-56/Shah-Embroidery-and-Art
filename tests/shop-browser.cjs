@@ -85,10 +85,12 @@ function mockClient() {
     assert.equal(await page.evaluate(title => JSON.parse(localStorage.getItem('shah_cart')).some(row => row.title === title && row.quantity === 1), title), true);
     assert.equal(await page.locator('#quickViewModal').evaluate(el => el.classList.contains('active')), false);
     await card.locator('.wishlist-toggle-btn').evaluate(el => el.click());
-    assert.equal(await page.evaluate(title => JSON.parse(localStorage.getItem('shah_wishlist')).guest.some(row => row.title === title), title), true);
+    await page.locator('#authModal.active').waitFor();
+    assert.equal(await page.evaluate(() => localStorage.getItem('shah_wishlist')), null);
+    await page.locator('#authModalClose').click();
     await page.goBack(); await ready(); assert.match(page.url(), /page=1/);
     await page.goForward(); await ready(); assert.match(page.url(), /page=2/);
-    assert.equal(await cards().first().locator('.wishlist-toggle-btn').evaluate(el => el.classList.contains('active')), true);
+    assert.equal(await cards().first().locator('.wishlist-toggle-btn').evaluate(el => el.classList.contains('active')), false);
     await page.reload(); await ready(); assert.match(page.url(), /category=Hoop\+Art&page=2/);
     console.log('PASS: category/page history, bookmark reload, Quick View/cart/wishlist on page 2');
     await page.getByRole('button', { name: 'Page 3', exact: true }).click(); await ready();

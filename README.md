@@ -15,7 +15,7 @@ Welcome to the official repository for **Shah Embroidery & Art**. This document 
 - **Brand Vision:** Combining traditional needlework heritage with contemporary artistic elegance. Specializing in handmade floral embroidery, custom bridal hoops, Islamic calligraphic threadwork, and personalized portrait embroidery.
 - **Site Purpose:** High-end business and service website showcasing past works, accepting custom order requests, providing itemized artwork exploration, and executing a complete front-end e-commerce shopping cart & multi-step checkout workflow.
 - **Tech Stack:**
-  - **Customer backend:** Supabase Auth, persistent customer profiles, saved addresses, orders, order items, and custom order requests linked to `auth.users.id`. Guest custom requests have no user ID. Profile names/phones come from `public.profiles`; email/password changes use Auth. Cart and wishlist remain browser-local; `shah_last_order` remains a receipt cache.
+  - **Customer backend:** Supabase Auth, persistent customer profiles, saved addresses, orders, order items, and custom order requests linked to `auth.users.id`. Guest custom requests have no user ID. Profile names/phones come from `public.profiles`; email/password changes use Auth. Wishlist uses UUID-owned Supabase rows; cart remains browser-local; `shah_last_order` remains a receipt cache.
   - **Core:** HTML5, Modular Vanilla CSS3, Vanilla JavaScript (ES6+)
   - **Typography & Icons:** Google Fonts (`Cormorant Garamond` & `Plus Jakarta Sans`), Font Awesome 6 Free
   - **Tooling & Build System:** Google Antigravity Agentic IDE
@@ -309,9 +309,10 @@ Product categories are fully dynamic and driven entirely by real category names 
 ---
 
 ### 21. Customer Profile (`profile.html`)
+- Wishlist loads the signed-in UUID's database rows joined to current products, preserving the existing grid, skeleton, empty state and controls. Failed loads offer Retry; removal uses product ID and updates only after successful DELETE. Add to Cart uses the fetched current price/details and leaves the saved wishlist entry intact.
 - Shows a neutral loading status/skeleton before protected account content. The shared helper verifies the session, fetches the current UUID's profile, and safely creates a missing row from Auth metadata/email. Legacy account values are never displayed or imported.
 - Account Settings loads database name/phone and the Auth email. Failed profile loads show a retry action. Saving validates all settings fields, displays `Saving...` with `aria-busy`, prevents duplicate writes, and retains entries on failure. Success refreshes the cache, header, avatar, and saved values without replacing the form.
-- Saved Addresses fetches the signed-in customer's database rows, default first then newest updated, with loading skeletons, retry, and the existing empty state. Add/Edit retains the form/card design and supports an optional label, second address line, province, and default checkbox. Country suggestions accept other country names. Delete uses the site's custom confirmation pattern. All actions show progress and unified feedback; failed edits retain entered values. Sidebar/mobile tabs and local wishlist remain intact.
+- Saved Addresses fetches the signed-in customer's database rows, default first then newest updated, with loading skeletons, retry, and the existing empty state. Add/Edit retains the form/card design and supports an optional label, second address line, province, and default checkbox. Country suggestions accept other country names. Delete uses the site's custom confirmation pattern. All actions show progress and unified feedback; failed edits retain entered values. Sidebar/mobile tabs remain intact; Wishlist now loads current product details from Supabase.
 - Custom Order Tracking queries `custom_order_requests` for the verified customer's UUID, newest first, retaining skeletons, empty state, request cards and reference thumbnails. Failures offer Retry. The real status drives the four steps: Inquiry Received, In Progress, Ready for Review, Completed. Reload/reopen the tab to see owner updates.
 - Order History queries `orders` with nested `order_items`, filtered by the validated customer's UUID, newest first. Existing cards, thumbnails, expandable details, status badges, and empty state are preserved. The existing skeleton covers loading; failures offer Try Again. Cancel Order updates only the current customer's still-Processing row; stale status changes are rejected and failures leave the confirmation recoverable. No legacy orders are read or automatically imported.
 
@@ -338,7 +339,8 @@ Product categories are fully dynamic and driven entirely by real category names 
 - [x] **Inline Expanding Search:** Search input with 250ms debounce, live suggestions dropdown, regex query highlighting, and smooth scroll to target artwork.
 - [x] **Search Keyboard Navigation:** Navigate suggestions using `ArrowUp`, `ArrowDown`, select with `Enter`, or dismiss with `Escape`.
 - [x] **Quick View Modal:** Inspect artwork details in modal overlay and add directly to cart.
-- [x] **Guest Cart Access:** Guests can add items from artwork cards and Quick View, adjust quantities, view the cart, and use wishlist hearts without authentication.
+- [x] **Guest Cart Access:** Guests can add items from artwork cards and Quick View, adjust quantities and view the cart without authentication. Wishlist hearts now require login; cart behavior is unchanged.
+- [x] **Supabase Wishlist:** Product-ID-based own-customer saves/removals, shared in-memory heart state, current product details in profile, skeletons/retry and failure-safe feedback. Guests see the existing login/signup modal and must click the heart again after signing in; nothing is automatically added.
 - [x] **Double-Click Add to Cart:** Quick shortcut to add artwork cards directly to cart (desktop double-click; single tap on touch devices, with success toast).
 - [x] **Gallery Category Filtering:** Animated tab filter for portfolio items.
 - [x] **Standalone Custom Order Form:** Existing category/budget/timeline choices and reference previews, with Storage uploads and Supabase-backed customer/guest submission, profile tracking and owner status management.
@@ -359,7 +361,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 
 > [!WARNING]
 > **CURRENT FRONT-END SCOPE & GAPS**
-> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, profiles, saved addresses, orders, order items, and custom requests. Cart and wishlist still require database migration. Legacy local orders/custom requests are ignored and retained; `shah_last_order` is only a receipt cache. Local tests do not prove live schema, grants or RLS deployment.
+> 1. **Partial Database Integration:** Supabase powers the catalog, customer authentication, profiles, saved addresses, orders, order items, and custom requests. Wishlist is now Supabase-backed; cart still requires database migration. Legacy local orders/custom requests are ignored and retained; `shah_last_order` is only a receipt cache. Local tests do not prove live schema, grants or RLS deployment.
 > 2. **No Order Email Dispatch:** The receipt notification remains a simulation. Supabase Auth confirmation emails are separate and depend on dashboard/email-provider configuration.
 > 3. **Inventory Limits:** Featured products are filtered by Supabase `in_stock`; checkout does not reserve or decrement stock.
 > 4. **Custom Request Recovery:** Reference images persist in Storage. Uploads abandoned after a failed insert may require manual cleanup. Same-page retries reuse completed uploads, but a lost response after a committed request can cause a duplicate on retry; this schema has no submission idempotency key. Guest requests are not readable by guests.
@@ -431,11 +433,11 @@ All forms validate fields on blur first, then validate on each keystroke after a
 ### Stored Data Notes
 - **Profile persistence:** Full name and phone are never cached in application localStorage; the database row and per-page in-memory cache supply them. Auth metadata is used only to seed a missing row. The existing email-bucket compatibility map remains solely for the unmigrated local datasets.
 - **Supabase:** Auth owns credentials/sessions; `public.profiles.id` references `auth.users.id`, the canonical customer UUID. Profile values are escaped/text-rendered. The SDK may persist its own tokens in browser storage; these are unrelated to the removed mock session.
-- **Compatibility:** `shah_customer_data_keys` maps validated UUIDs to their first local email bucket on this browser, preserving wishlist access across email changes. Addresses, orders, and custom requests no longer use this map. It never authenticates anyone.
+- **Legacy compatibility:** No customer feature reads or writes the former email-bucket mapping `shah_customer_data_keys`. Legacy wishlist/map keys are left untouched, ignored and not automatically imported.
 - **Cart:** `shah_cart` remains guest-accessible and unchanged by authentication.
 - **Orders:** Supabase `orders.user_id` references Auth UUID; `order_items.order_id` references the order. Order History never trusts `shah_orders` or `shah_last_order`. The latter caches only the most recent successfully saved receipt for confirmation. `sessionStorage` temporarily holds stable IDs and the checkout snapshot for retry; it contains no credentials and is cleared after successful checkout.
 - **Custom requests:** Supabase `public.custom_order_requests` is the sole source of truth, keyed by Auth UUID for customers or null `user_id` plus `guest_email` for guests. Legacy `shah_custom_order_requests` is ignored, retained, and never automatically imported.
-- **Wishlist:** Each email key stores an array of wishlist items in `shah_wishlist`.
+- **Wishlist:** `public.wishlist_items` stores Auth UUID `user_id` and bigint `product_id`, with unique `(user_id, product_id)` and product/Auth deletion cascades. `shah_wishlist` is no longer read or written by application code. Profile joins current product title/category/price/image; Add to Cart uses that current snapshot. Cart remains in `shah_cart`.
 - **Saved addresses:** Supabase `public.addresses` is the sole source of truth, owned by `auth.users.id` through `user_id`. Existing `shah_saved_addresses` contents remain inert; no automatic import of browser/mock data occurs. Customers can deliberately re-enter addresses using the validated form.
 
 ---
@@ -494,7 +496,7 @@ All favicon assets are generated from `Images/Logo.png` (699×699 px) using the 
 1. **Payment Gateway Integration:**
    - Integrate local Pakistani payment gateways (JazzCash, Easypaisa, PayFast) and international credit card processors (Stripe / PayPal API).
 2. **Customer Backend Migration:**
-   - Customer Auth, profiles, saved addresses, orders, order items, and custom requests are implemented with Supabase. Wishlist/cart persistence and transactional checkout remain future work.
+   - Customer Auth, profiles, saved addresses, orders, order items, and custom requests are implemented with Supabase. Wishlist persistence is complete; cart persistence and transactional checkout remain future work.
    - Add transactional order submission with server-side pricing/cart/inventory verification, reference uploads, and payment webhooks.
 3. **Admin Dashboard Extensions:**
    - Product, order/status, and custom request management are implemented in the unlisted Supabase admin pages. Future work: tracking details and fulfillment notifications.
@@ -506,6 +508,14 @@ All favicon assets are generated from `Images/Logo.png` (699×699 px) using the 
 ---
 
 ## Database (Supabase)
+
+### Wishlist schema and verification
+
+The owner's existing `public.wishlist_items` schema is reused: UUID primary key `id`, required UUID `user_id` referencing `auth.users(id) ON DELETE CASCADE`, required bigint `product_id` referencing `products(id) ON DELETE CASCADE`, `created_at TIMESTAMPTZ DEFAULT now()`, and unique `(user_id, product_id)`. Its `customer_wishlist_select`, `customer_wishlist_insert`, and `customer_wishlist_delete` policies grant authenticated own-row operations using `auth.uid() = user_id`. There is no guest or admin-wide access policy. No new migration or policy changes are required if the supplied schema/policies and authenticated SELECT/INSERT/DELETE grants are already applied.
+
+`js/script.js` coalesces product-ID list reads per authenticated page session and shares state across dynamic card rebinding. Mutations verify the actual Auth user, serialize duplicate clicks per product, accept unique-conflict adds as already saved, and update hearts only after success. Changing account resets the in-memory cache; old responses cannot populate another account's state. Profile uses `product_id, products(*)` and real product IDs for remove/Add to Cart. Missing joined products are skipped defensively; product deletion cascades remove the underlying wishlist rows. Legacy static cards without real product IDs cannot be persisted and show a browse-Shop message.
+
+Verification: `tests/wishlist-browser.cjs` uses mocked SDK responses for guest gating/no automatic add, one shared ID query, reload/cross-page state, current-price cart addition, removal, duplicate conflicts, failure retention, two accounts and query retry. `tests/wishlist-sql.cjs` executes the supplied schema/policies in local PGlite, including both users' rows cascading after product deletion. Live RLS, grants and cascade deployment remain unverified: check them in the configured project's Database → Policies/Table Editor and repeat with two real customer sessions. Neither test modifies the remote database.
 
 The `products` table powers the Latest Work section on `index.html`. `js/product-loader.js` fetches up to six rows with `in_stock=true`, newest first. The legacy `is_featured` column remains in Supabase for compatibility but is not used by the homepage, shop, or admin UI.
 
@@ -613,7 +623,7 @@ Phase 2 dependency map (audited before implementation):
 | Checkout | Restored current checkout values, empty-field profile contact prefill, then Supabase default-address fields (Phase 3) |
 | `js/custom-order.js` | Shared empty-field contact prefill; validated identity, Storage uploads then database insert |
 | Orders | Shared database service; UUID ownership and nested order items; local confirmation cache only |
-| Wishlist | Existing UUID/email-bucket compatibility; still localStorage-backed |
+| Wishlist | Supabase wishlist_items by Auth UUID, with current joined product details |
 | Custom requests | Supabase UUID-owned history and real status; guests INSERT only; owner sees all |
 | Saved addresses (Phase 3) | Shared database service keyed by authenticated UUID; no email-bucket storage |
 | Admin | Existing independent owner validation and RLS; no customer role grants |
@@ -652,6 +662,17 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
 `admin.html` includes an isolated `js/admin-custom-orders.js` panel initialized after the existing owner gate; each load/save revalidates the owner. It lists all customer and guest requests newest first with 25-row pagination, name/email/type/date/account/image count and status. Expand details to inspect the full brief, contact fields and reference thumbnails. Four status options match customer tracking; Save checks the previously displayed status, disables duplicate actions, updates the timestamp, and shows the existing admin toast. Failed loads/saves retain actionable Refresh/retry guidance. Database text is escaped and image links accept only HTTP(S). Product/order management and admin authorization remain unchanged.
 
 ## 11. Change Log
+
+### [2026-09-21] - Supabase Wishlist and Login Requirement
+
+- Replaced local wishlist/email buckets with UUID-owned `wishlist_items`, reusing existing real product IDs and card/profile styling. Guest hearts open the existing auth modal with context; no pending wishlist action is replayed after login. Cart remains guest-accessible and local.
+- Added shared cached heart state, duplicate-click/unique-conflict handling, failure feedback, current joined profile details, retry and database removal. Removed obsolete local wishlist helpers and the Auth email-bucket mapping; legacy stored data is not deleted/imported.
+- Added browser and local SQL tests, including isolation and product deletion cascade. Updated the existing Shop guest-heart assertion to expect login rather than a local save; documented remaining live verification.
+- Validation: wishlist browser/SQL tests, Shop regressions and customer-profile regressions all passed, along with JavaScript syntax and diff checks. Supabase production policies and account sessions were not modified or live-tested.
+
+### [2026-09-21] - Business Contact Email Updated
+
+- Updated the public contact email and mailto recipient to `toseefa_abrar@yahoo.com`, including documentation references. Preserved the existing inquiry subject, link markup/styling, phone, WhatsApp and location details.
 
 ### [2026-09-21] - Product Image/Title Quick View and Delivery Estimate
 
@@ -871,7 +892,7 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
   - **Missing Mobile Menu Repair:** `order-confirmation.html` shipped a hamburger button with no backing drawer; added the missing `.mobile-drawer` markup so its menu now opens and navigates.
   - **Asset Path Consistency:** Unified stray lower-case `images/logo.png` references to the canonical capitalised `Images/logo.png` so builds hosted on case-sensitive servers resolve correctly.
   - **Accessibility Labels:** Ensured icon-only controls (search, cart, account, wishlist, drawers) carry descriptive `aria-label`s.
-- **Clickable Business Contacts:** Documented that the business email (`info@shahembroidery.com`) and phone (+92 300 1234567) are live `mailto:` / `tel:` links site-wide (sole, consistent instances).
+- **Clickable Business Contacts:** Documented that the business email (`toseefa_abrar@yahoo.com`) and phone (+92 300 1234567) are live `mailto:` / `tel:` links site-wide (sole, consistent instances).
   - **Dead Social-Icon Targets Populated:** Routed the three formerly-`#` footer social icons to `instagram.com/shah-embroidery`, `facebook.com/shah-embroidery`, and `pinterest.com/shah-embroidery` (each opening in a new tab with `rel="noopener noreferrer"`).
   - **Bank Routing Disclosure Tightened:** Swapped the speculative account/IBAN figures in the checkout *Bank Transfer* pane for an explicit "provided on your emailed invoice" disclosure, so no bystander mistakes demo numbers for routable funds.
 

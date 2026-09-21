@@ -13,22 +13,12 @@
   let savingRecovery = false;
   const isRecoveryPage = location.pathname.endsWith('/reset-password.html');
   const PROFILE_CACHE_MS = 60000;
-  const localDataKey = identity => {
-    // Compatibility only: this mapping never establishes identity or authorization.
-    const key = 'shah_customer_data_keys';
-    const email = text(identity.email).toLowerCase();
-    try {
-      const map = JSON.parse(localStorage.getItem(key) || '{}');
-      if (!map[identity.id]) { map[identity.id] = email; localStorage.setItem(key, JSON.stringify(map)); }
-      return typeof map[identity.id] === 'string' ? map[identity.id] : email;
-    } catch { return email; }
-  };
   const notify = () => window.dispatchEvent(new Event('customer-auth-change'));
   const text = value => typeof value === 'string' ? value : '';
   const current = () => user ? {
     id: user.id, email: text(user.email).toLowerCase(),
     name: text(profile?.full_name),
-    phone: text(profile?.phone), joinDate: profile?.created_at || user.created_at, localDataKey: localDataKey(user)
+    phone: text(profile?.phone), joinDate: profile?.created_at || user.created_at
   } : null;
   const message = (error, mode = '') => {
     const code = error?.code;

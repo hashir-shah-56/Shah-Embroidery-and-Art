@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const STORAGE_KEYS = {
     cart: 'shah_cart',
     lastOrder: 'shah_last_order',
-    wishlist: 'shah_wishlist',
     pendingCheckoutFormData: 'pendingCheckoutFormData',
     loginRedirectTarget: 'loginRedirectTarget'
   };
@@ -180,32 +179,82 @@ document.addEventListener('DOMContentLoaded', async () => {
   let ordersLoadError = false;
   const getUserOrders = () => customerOrderRows;
 
-  const getWishlist = () => {
-    const currentUser = getCurrentUser();
-    const wishlist = getFromStorage(STORAGE_KEYS.wishlist, {});
-    const wishlistKey = currentUser ? currentUser.localDataKey : 'guest';
-    return wishlist[wishlistKey] || [];
-  };
-
-  const toggleWishlistItem = (itemData) => {
-    const currentUser = getCurrentUser();
-    const itemKey = `${itemData.title}|${itemData.category || 'Hand Embroidery'}|${itemData.price || 'Rs. 0'}`;
-    const currentWishlist = getWishlist();
-    const exists = currentWishlist.some(item => `${item.title}|${item.category || 'Hand Embroidery'}|${item.price || 'Rs. 0'}` === itemKey);
-    const updatedWishlist = exists ? currentWishlist.filter(item => `${item.title}|${item.category || 'Hand Embroidery'}|${item.price || 'Rs. 0'}` !== itemKey) : [...currentWishlist, itemData];
-    saveWishlist(updatedWishlist);
-    renderWishlistButtons();
-    if (profilePage && profilePage.classList.contains('visible')) {
-      renderProfileSection('wishlist');
+  let wishlistOwner = null, wishlistIds = new Set(), wishlistRows = [];
+  let wishlistLoaded = false, wishlistPending = null, wishlistVersion = 0, wishlistLoadError = false;
+  const wishlistBusy = new Set();
+  const syncWishlistOwner = () => {
+    const id = getCurrentUser()?.id || null;
+    if (id !== wishlistOwner) {
+      wishlistOwner = id; wishlistIds = new Set(); wishlistRows = [];
+      wishlistLoaded = false; wishlistPending = null; wishlistVersion++;
     }
+    return id;
   };
-
-  const saveWishlist = (items) => {
-    const currentUser = getCurrentUser();
-    const wishlistMap = getFromStorage(STORAGE_KEYS.wishlist, {});
-    const wishlistKey = currentUser ? currentUser.localDataKey : 'guest';
-    wishlistMap[wishlistKey] = items;
-    saveToStorage(STORAGE_KEYS.wishlist, wishlistMap);
+  const verifyWishlistOwner = async owner => {
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error || !owner || data?.user?.id !== owner || getCurrentUser()?.id !== owner) throw new Error('Session changed');
+  };
+  const loadWishlistIds = async () => {
+    const owner = syncWishlistOwner();
+    if (!owner) return;
+    if (wishlistLoaded) return;
+    if (wishlistPending) return wishlistPending;
+    const version = wishlistVersion;
+    const request = (async () => {
+      await verifyWishlistOwner(owner);
+      const {data, error} = await supabaseClient.from('wishlist_items').select('product_id').eq('user_id', owner);
+      if (error) throw error;
+      if (getCurrentUser()?.id !== owner || version !== wishlistVersion) return;
+      wishlistIds = new Set((data || []).map(row => String(row.product_id)));
+      wishlistLoaded = true;
+    })();
+    wishlistPending = request;
+    try { await request; } finally { if (wishlistPending === request) wishlistPending = null; }
+  };
+  const loadWishlistDetails = async () => {
+    const owner = syncWishlistOwner(), version = wishlistVersion;
+    await verifyWishlistOwner(owner);
+    const {data, error} = await supabaseClient.from('wishlist_items')
+      .select('product_id, products(*)').eq('user_id', owner).order('created_at', {ascending: false});
+    if (error) throw error;
+    if (getCurrentUser()?.id !== owner || version !== wishlistVersion) throw new Error('Wishlist changed');
+    wishlistRows = (data || []).filter(row => row.products).map(row => {
+      const product = row.products;
+      let img = '';
+      try { if (['https:', 'http:'].includes(new URL(product.image_url).protocol)) img = product.image_url; } catch { /* Missing image. */ }
+      return { productId: String(row.product_id), title: product.title, category: product.category, img,
+        price: product.is_custom_quote ? 'Custom Quote' : formatPrice(Number(product.price) || 0) };
+    });
+    wishlistIds = new Set((data || []).map(row => String(row.product_id))); wishlistLoaded = true;
+  };
+  const toggleWishlistItem = async (productId, removeOnly = false) => {
+    await auth.ready;
+    const owner = syncWishlistOwner();
+    if (!owner) {
+      setAuthView('login');
+      if (authContextMessage) authContextMessage.textContent = 'Please sign in to save items to your wishlist';
+      openAuthModal(); return;
+    }
+    if (!/^\d+$/.test(String(productId || ''))) { showToast('This artwork is not available to save. Please browse the Shop.', 'error'); return; }
+    productId = String(productId);
+    const key = `${owner}:${productId}`;
+    if (wishlistBusy.has(key)) return;
+    wishlistBusy.add(key);
+    renderWishlistButtons(false);
+    try {
+      await loadWishlistIds(); await verifyWishlistOwner(owner);
+      const remove = removeOnly || wishlistIds.has(productId);
+      const result = remove
+        ? await supabaseClient.from('wishlist_items').delete().eq('user_id', owner).eq('product_id', productId)
+        : await supabaseClient.from('wishlist_items').insert({user_id: owner, product_id: productId});
+      if (result.error && !( !remove && result.error.code === '23505')) throw result.error;
+      if (getCurrentUser()?.id !== owner) return;
+      wishlistVersion++;
+      if (remove) wishlistIds.delete(productId); else wishlistIds.add(productId);
+      showToast(remove ? 'Removed from your wishlist.' : 'Saved to your wishlist.', 'success');
+      if (profilePage?.classList.contains('visible') && document.querySelector('.account-tab.active')?.dataset.section === 'wishlist') await renderProfileSection('wishlist');
+    } catch { if (getCurrentUser()?.id === owner) showToast("Couldn't update your wishlist. Please try again.", 'error'); }
+    finally { wishlistBusy.delete(key); renderWishlistButtons(false); }
   };
 
   const addressService = window.customerAddresses;
@@ -1177,6 +1226,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       customOrdersLoadError = false;
       await Promise.all([
         new Promise(resolve => window.setTimeout(resolve, SKELETON_MIN_MS)),
+        sectionName === 'wishlist' ? loadWishlistDetails().then(() => {
+          if (version === profileRenderVersion) wishlistLoadError = false;
+        }).catch(() => { if (version === profileRenderVersion) { wishlistRows = []; wishlistLoadError = true; } }) :
         sectionName === 'orders' ? Promise.resolve().then(() => orderService.listCustomer(user.id)).then(rows => {
           if (version === profileRenderVersion && getCurrentUser()?.id === user.id) { customerOrderRows = rows; ordersLoadError = false; }
         }).catch(() => { if (version === profileRenderVersion) { customerOrderRows = []; ordersLoadError = true; } }) :
@@ -1363,7 +1415,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const renderWishlistSection = () => {
-    const items = getWishlist();
+    if (wishlistLoadError) return '<div class="account-section active"><p role="status">Your wishlist could not load. Please try again.</p><button type="button" class="btn btn-outline" id="retryWishlist">Retry</button></div>';
+    const items = wishlistRows;
     if (!items.length) {
       return `
         <div class="account-section active">
@@ -1381,8 +1434,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${items.map(item => `
             <div class="account-wishlist-item">
               <div style="position: relative;">
-                <img src="${item.img || 'https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=200&auto=format&fit=crop'}" class="wishlist-item-image" alt="${escapeHTML(item.title)}">
-                <button type="button" class="profile-wishlist-heart active" data-wishlist-title="${escapeHTML(item.title)}" aria-label="Remove from wishlist">
+                <img src="${escapeHTML(item.img || 'Images/Logo.png')}" class="wishlist-item-image" alt="${escapeHTML(item.title)}">
+                <button type="button" class="profile-wishlist-heart active" data-product-id="${escapeHTML(item.productId)}" aria-label="Remove from wishlist">
                   <i class="fa-solid fa-heart"></i>
                 </button>
               </div>
@@ -1391,8 +1444,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="artwork-title" style="font-size: 1.2rem; margin-bottom: 0;">${escapeHTML(item.title)}</div>
         <div class="artwork-price" style="margin-top: 10px;">${escapeHTML(item.price || 'Rs. 140')}</div>
                 <div class="wishlist-item-actions">
-                  <button type="button" class="btn btn-primary move-to-cart" data-title="${escapeHTML(item.title)}">Add to Cart</button>
-                  <button type="button" class="wishlist-remove-btn remove-wishlist-item" data-title="${escapeHTML(item.title)}"><i class="fa-solid fa-trash"></i></button>
+                  <button type="button" class="btn btn-primary move-to-cart" data-product-id="${escapeHTML(item.productId)}">Add to Cart</button>
+                  <button type="button" class="wishlist-remove-btn remove-wishlist-item" data-product-id="${escapeHTML(item.productId)}" aria-label="Remove from wishlist"><i class="fa-solid fa-trash"></i></button>
                 </div>
               </div>
             </div>
@@ -1509,32 +1562,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
   };
 
-  const renderWishlistButtons = () => {
-    document.querySelectorAll('.artwork-card, .gallery-item').forEach(card => {
-      const title = card.getAttribute('data-title') || card.querySelector('.artwork-title, .gallery-overlay-title')?.textContent?.trim() || '';
-      if (!title) return;
-      if (card.querySelector('.wishlist-toggle-btn')) return;
-
-      const item = {
-        title,
-        category: card.getAttribute('data-category') || card.querySelector('.artwork-category, .gallery-overlay-cat')?.textContent?.trim() || 'Hand Embroidery',
-        price: card.getAttribute('data-price') || card.querySelector('.artwork-price')?.textContent?.trim() || '$140.00',
-        img: card.querySelector('.artwork-img, .gallery-img')?.src || ''
-      };
-
-      const isSaved = getWishlist().some(savedItem => savedItem.title === item.title && savedItem.price === item.price);
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `wishlist-toggle-btn ${isSaved ? 'active' : ''}`;
-      button.setAttribute('aria-label', isSaved ? 'Remove from wishlist' : 'Add to wishlist');
-      button.innerHTML = isSaved ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleWishlistItem(item);
-      });
-      card.appendChild(button);
+  const renderWishlistButtons = async (fetchState = true) => {
+    await auth.ready;
+    const owner = syncWishlistOwner();
+    const paint = () => document.querySelectorAll('.artwork-card, .gallery-item').forEach(card => {
+      const productId = card.dataset.productId || '';
+      let button = card.querySelector('.wishlist-toggle-btn');
+      if (!button) {
+        button = document.createElement('button'); button.type = 'button';
+        button.addEventListener('click', event => {
+          event.preventDefault(); event.stopPropagation(); toggleWishlistItem(productId);
+        });
+        card.appendChild(button);
+      }
+      const saved = wishlistIds.has(productId);
+      button.className = `wishlist-toggle-btn ${saved ? 'active' : ''}`;
+      button.setAttribute('aria-label', saved ? 'Remove from wishlist' : 'Add to wishlist');
+      button.setAttribute('aria-pressed', String(saved));
+      button.disabled = wishlistBusy.has(`${owner}:${productId}`);
+      button.innerHTML = saved ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
     });
+    paint();
+    if (fetchState && owner && document.querySelector('.artwork-card, .gallery-item')) {
+      try { await loadWishlistIds(); }
+      catch { if (getCurrentUser()?.id === owner) showToast("Your saved hearts could not load. Click a heart to retry.", 'error'); }
+      if (getCurrentUser()?.id === owner) paint();
+    }
   };
 
   let pendingCancellationOrder = null;
@@ -1634,35 +1687,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.move-to-cart').forEach(button => {
       button.addEventListener('click', () => {
-        const title = button.dataset.title;
-        const items = getWishlist();
-        const item = items.find(entry => entry.title === title);
+        const item = wishlistRows.find(entry => entry.productId === button.dataset.productId);
         if (item) {
           addToCart(item);
         }
       });
     });
 
-    document.querySelectorAll('.remove-wishlist-item').forEach(button => {
-      button.addEventListener('click', () => {
-        const title = button.dataset.title;
-        const wishlist = getWishlist();
-        const updated = wishlist.filter(entry => entry.title !== title);
-        saveWishlist(updated);
-        renderProfileSection('wishlist');
+    document.querySelectorAll('.remove-wishlist-item, .profile-wishlist-heart').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        try { await toggleWishlistItem(button.dataset.productId, true); }
+        finally { button.disabled = false; }
       });
     });
 
-    document.querySelectorAll('.profile-wishlist-heart').forEach(button => {
-      button.addEventListener('click', () => {
-        const title = button.dataset.wishlistTitle;
-        const wishlist = getWishlist();
-        const updated = wishlist.filter(entry => entry.title !== title);
-        saveWishlist(updated);
-        renderProfileSection('wishlist');
-      });
-    });
-
+    document.getElementById('retryWishlist')?.addEventListener('click', () => renderProfileSection('wishlist'));
     document.getElementById('retryAddresses')?.addEventListener('click', () => renderProfileSection('addresses'));
     document.getElementById('retryCustomOrders')?.addEventListener('click', () => renderProfileSection('custom-orders'));
 
