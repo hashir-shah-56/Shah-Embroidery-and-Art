@@ -271,6 +271,7 @@ Product categories are fully dynamic and driven entirely by real category names 
 - **Description:** A dedicated request workflow organized into Contact Information, Order Details, Reference Images, Budget & Timeline, and Submit sections. After session/profile loading, empty name/phone fields use `public.profiles` and email uses the authenticated address. Text entered while loading is preserved. Requests persist in `public.custom_order_requests`.
 - **Order details:** Order Type cards reuse `fetchCategories()` from `js/product-loader.js`, the same catalog category helper used by Shop/Admin. Categories are deduplicated case-insensitively and sorted alphabetically. A single permanent `Other` card appears last, including when the catalog has no categories or the shared helper cannot fetch them. Reloading reflects newly added catalog categories. Cards retain the existing grid, radio interaction and gold selected state; submission preserves the shared helper's canonical category name, or exactly `Other`. Dimensions, palette, occasion, budget, timeline, and the specific date field are unchanged.
 - **Reference images:** The existing optional drag-and-drop/browse preview uploads files to `custom-order-images` before inserting the request with `reference_image_urls`. Completed uploads are reused during same-page retries for the same authenticated identity.
+- **Budget Range:** Optional choices are Under Rs. 2,000, Rs. 2,000 - 5,000, Rs. 5,000 - 10,000, and Rs. 10,000+. Labels and submitted `budget_range` values match exactly; admin details display the stored range unchanged.
 - **Behavior:** Server-validated customers submit their Auth UUID; guests submit null `user_id` and their entered `guest_email`. Successful customers return to `profile.html#custom-orders`; guests receive inline confirmation and cannot later query their request. INSERT does not request returned rows, preserving guest INSERT-only RLS. Loading prevents duplicate clicks; upload/insert failures retain all form data and selected files for retry.
 
 ### 17. Artwork Quick View Modal (`#quickViewModal`)
@@ -662,6 +663,11 @@ The status selector supports Processing, Shipped, Delivered, and Cancelled. Save
 `admin.html` includes an isolated `js/admin-custom-orders.js` panel initialized after the existing owner gate; each load/save revalidates the owner. It lists all customer and guest requests newest first with 25-row pagination, name/email/type/date/account/image count and status. Expand details to inspect the full brief, contact fields and reference thumbnails. Four status options match customer tracking; Save checks the previously displayed status, disables duplicate actions, updates the timestamp, and shows the existing admin toast. Failed loads/saves retain actionable Refresh/retry guidance. Database text is escaped and image links accept only HTTP(S). Product/order management and admin authorization remain unchanged.
 
 ## 11. Change Log
+
+### [2026-09-21] - PKR Custom Budget Conversion Follow-up
+
+- Corrected the hardcoded Custom Order Budget Range labels and radio values missed by the original PKR conversion: Under Rs. 2,000; Rs. 2,000 - 5,000; Rs. 5,000 - 10,000; Rs. 10,000+. These brackets reflect the owner's stated Rs. 1,200–3,500 standard-piece pricing. The selected value passes unchanged into `custom_order_requests.budget_range` and the existing admin details view.
+- Replaced the remaining two dollar-denominated initial checkout total placeholders with `Rs. 0`. No option styling or other contact/order fields changed. Historical submitted budget strings remain unchanged; no exchange-rate conversion or remote record rewrite is performed.
 
 ### [2026-09-21] - Supabase Wishlist and Login Requirement
 
